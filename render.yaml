@@ -1,0 +1,21 @@
+# Render Blueprint — deploys the LimProjects dashboard as a public web service.
+# https://render.com/docs/blueprint-spec
+#
+# Usage:
+#   1. Push this repo to GitHub.
+#   2. Render dashboard -> "New +" -> "Blueprint" -> pick this repo.
+#   3. Render creates a free web service at https://<name>.onrender.com
+#   4. The MoonCutter ESP32 pushes its status to this service
+#      (POST /api/heartbeat, configured by HEARTBEAT_URL in the ESP's
+#      config.h). The dashboard at the root URL shows each board's
+#      online/offline dot from anywhere in the world.
+
+services:
+  - type: web
+    name: limprojects
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: ""
+    startCommand: node server.js
+    healthCheckPath: /api/boards

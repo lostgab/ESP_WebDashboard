@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LimProjects Dashboard</title>
+  <style>
+    /* AgvReplay-style theme (Seagate palette) */
+    :root {
+      --dash-bg: #F0F5F9;           /* Seagate Sea 50 */
+      --dash-surface: #FFFFFF;
+      --dash-text: #11181F;         /* Seagate Sea 950 */
+      --dash-text-secondary: #576272; /* Seagate Carbon 600 */
+      --dash-border: #CFDDE8;       /* Seagate Sea 200 */
+      --dash-primary: #6EBE49;      /* Seagate Green 400 */
+      --dash-primary-hover: #55A72F;
+      --dash-primary-light: #C8EEB5;
+      --dash-radius: 4px;
+      --status-online: #2F743C;
+      --status-offline: #D64545;
+      --status-engraving: #E8A317;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--dash-bg);
+      color: var(--dash-text);
+      overflow: hidden;
+    }
+
+    /* ===== Shell: full-height sidebar + right column ===== */
+    .dash-shell { display: flex; flex-direction: row; height: 100vh; overflow: hidden; }
+
+    /* ===== Sidebar ===== */
+    .app-sidebar {
+      background: var(--dash-surface);
+      border-right: 1px solid var(--dash-border);
+      width: 220px;
+      min-width: 220px;
+      height: 100%;
+      overflow-y: auto;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 12px;
+      gap: 4px;
+    }
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 8px 12px;
+      border-bottom: 1px solid var(--dash-border);
+      margin-bottom: 8px;
+    }
+    .sidebar-brand h1 { font-size: 15px; font-weight: 700; }
+    .sidebar-brand h1 span { color: var(--dash-text-secondary); font-weight: 400; }
+
+    .board-list { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .app-sidebar-btn {
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      width: 100%;
+      background: none;
+      border: none;
+      border-radius: 8px;
+      border-left: 3px solid transparent;
+      color: var(--dash-text-secondary);
+      font-size: 15px;
+      font-weight: 500;
+      text-align: left;
+      cursor: pointer;
+    }
+    .app-sidebar-btn .scalable-svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .app-sidebar-btn .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .app-sidebar-btn .ip { font-size: 11px; color: var(--dash-text-secondary); white-space: nowrap; }
+    .app-sidebar-btn:hover { background: var(--dash-primary-light); color: var(--dash-primary); }
+    .app-sidebar-btn.active {
+      background: var(--dash-primary-light);
+      color: var(--dash-primary);
+      border-left-color: var(--dash-primary);
+      font-weight: 600;
+    }
+    .app-sidebar-btn .dot {
+      position: absolute;
+      top: 9px; right: 10px;
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: var(--dash-border);
+    }
+    .app-sidebar-btn .dot.online { background: var(--status-online); }
+    .app-sidebar-btn .dot.offline { background: var(--status-offline); }
+    .app-sidebar-btn .dot.engraving { background: var(--status-engraving); animation: pulse 1s infinite; }
+    @keyframes pulse { 50% { opacity: 0.4; } }
+
+    .sidebar-footer {
+      padding: 10px 8px 0;
+      border-top: 1px solid var(--dash-border);
+      font-size: 11px;
+      color: var(--dash-text-secondary);
+    }
+
+    /* ===== Right column ===== */
+    .dash-right { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: hidden; }
+    .dash-right .header {
+      background: var(--dash-surface);
+      border-bottom: 1px solid var(--dash-border);
+      flex-shrink: 0;
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem 1.5rem;
+      flex-wrap: wrap;
+    }
+    .header-brand { display: flex; align-items: center; gap: 0.75rem; }
+    .header h1 { font-size: 1.35rem; font-weight: 700; }
+    .header .board-info { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+    .header .board-info .title { font-size: 14px; font-weight: 600; }
+    .header .board-info .url { font-size: 12px; color: var(--dash-text-secondary); }
+    .header .open-btn {
+      padding: 6px 14px;
+      background: var(--dash-primary);
+      color: #000;
+      border: none;
+      border-radius: var(--dash-radius);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .header .open-btn:hover { background: var(--dash-primary-hover); }
+
+    .app-main { flex: 1; overflow: hidden; position: relative; background: var(--dash-bg); }
+    .app-main iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #fff;
+    }
+    .app-main iframe.hidden { display: none; }
+    .placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--dash-text-secondary);
+      font-size: 14px;
+    }
+    .placeholder .offline-icon { font-size: 48px; }
+    .placeholder .offline-title { font-size: 18px; font-weight: 600; color: var(--dash-text); }
+    .placeholder .offline-detail { font-size: 13px; }
+  </style>
+</head>
+<body>
+
+  <div class="dash-shell">
+    <!-- Left sidebar: board tabs -->
+    <div class="app-sidebar">
+      <div class="sidebar-brand">
+        <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
+          <rect width="36" height="36" rx="8" fill="rgba(110,190,73,0.15)"/>
+          <path d="M10 24V14l8-6 8 6v10H10z" fill="#6EBE49"/>
+          <circle cx="18" cy="18" r="3" fill="#6EBE49"/>
+        </svg>
+        <h1>LimProjects <span>boards</span></h1>
+      </div>
+      <div class="board-list" id="boardList"></div>
+      <div class="sidebar-footer" id="boardConfigPanel"></div>
+    </div>
+
+    <!-- Right column: header + board view -->
+    <div class="dash-right">
+      <header class="header">
+        <div class="header-top">
+          <div class="header-brand">
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+              <rect width="36" height="36" rx="8" fill="rgba(110,190,73,0.15)"/>
+              <path d="M10 24V14l8-6 8 6v10H10z" fill="#6EBE49"/>
+              <circle cx="18" cy="18" r="3" fill="#6EBE49"/>
+            </svg>
+            <h1>LimProjects Dashboard</h1>
+          </div>
+          <div class="board-info">
+            <span class="title" id="activeTitle">Select a board</span>
+            <span class="url" id="activeUrl"></span>
+            <a class="open-btn" id="openBtn" href="#" target="_blank" style="display:none;">Open in new tab</a>
+          </div>
+        </div>
+      </header>
+      <div class="app-main" id="frameWrap">
+        <div class="placeholder" id="placeholder">Select a board on the left</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    //  BOARD LIST — edit this to add/remove boards.
+    //  name: shown in the sidebar
+    //  url:  the board's web app (http://<board-ip>/)
+    // ============================================================
+    const BOARDS = [
+      { name: 'Board 1', url: 'http://192.168.1.100' },
+      // { name: 'Board 2', url: 'http://192.168.1.101' },
+      // { name: 'Board 3', url: 'http://192.168.1.102' },
+    ];
+    // ============================================================
+
+    const boardList = document.getElementById('boardList');
+    const frameWrap = document.getElementById('frameWrap');
+    const placeholder = document.getElementById('placeholder');
+    const activeTitle = document.getElementById('activeTitle');
+    const activeUrl = document.getElementById('activeUrl');
+    const openBtn = document.getElementById('openBtn');
+
+    let activeIdx = -1;
+    const iframes = [];
+
+    // Laser icon (20px) for each board tab
+    const LASER_ICON = `<svg class="scalable-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
+
+    // Build sidebar buttons + iframes
+    BOARDS.forEach((b, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'app-sidebar-btn';
+      btn.title = b.url;
+      // Show the board's IP (strip protocol) in the sidebar.
+      const boardIp = b.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      btn.innerHTML = `${LASER_ICON}
+        <span class="name">${b.name}</span>
+        <span class="ip" id="ip${i}">${boardIp}</span>
+        <span class="dot" id="dot${i}"></span>`;
+      btn.onclick = () => selectBoard(i);
+      boardList.appendChild(btn);
+
+      const iframe = document.createElement('iframe');
+      iframe.className = 'hidden';
+      iframe.src = b.url;
+      frameWrap.appendChild(iframe);
+      iframes.push(iframe);
+    });
+
+    function selectBoard(i) {
+      // Toggle: clicking the already-active board deselects it (back to "waiting").
+      if (activeIdx === i) {
+        activeIdx = -1;
+        document.querySelectorAll('.app-sidebar-btn').forEach((el) =>
+          el.classList.remove('active'));
+        iframes.forEach((f) => f.classList.add('hidden'));
+        activeTitle.textContent = 'Select a board';
+        activeUrl.textContent = '';
+        openBtn.style.display = 'none';
+        placeholder.style.display = '';
+        placeholder.innerHTML = 'Select a board on the left';
+        return;
+      }
+      activeIdx = i;
+      document.querySelectorAll('.app-sidebar-btn').forEach((el, j) =>
+        el.classList.toggle('active', j === i));
+      // Remote (HTTPS) mode: the ESP's page can't be iframed — keep all
+      // iframes hidden and show the status card instead.
+      iframes.forEach((f, j) =>
+        f.classList.toggle('hidden', isRemoteMode() ? true : j !== i));
+      activeTitle.textContent = BOARDS[i].name;
+      activeUrl.textContent = BOARDS[i].url;
+      openBtn.href = BOARDS[i].url;
+      openBtn.style.display = '';
+      // Show the board's web page if online, offline message if not.
+      updateMainPane(i);
+    }
+
+    // Track which boards are online + their latest status.
+    const boardOnline = BOARDS.map(() => false);
+    const boardStatus = BOARDS.map(() => null);   // latest /api/status or heartbeat
+
+    // On an HTTPS page (e.g. the Render deployment) the browser CANNOT fetch
+    // or iframe a board's plain-HTTP URL (mixed content), and from another
+    // network it can't reach the board at all. In that mode the dots + pane
+    // are driven by the same-origin heartbeat relay (GET /api/boards): the
+    // ESP pushes its status to the Render service every ~10 s.
+    function isRemoteMode() {
+      return location.protocol === 'https:';
+    }
+
+    function applyStatus(i, j, online) {
+      boardOnline[i] = online;
+      boardStatus[i] = online ? j : null;
+      const dot = document.getElementById('dot' + i);
+      dot.className = 'dot ' + (!online ? 'offline'
+        : (j.state === 'engraving' ? 'engraving' : 'online'));
+      if (i === activeIdx) {
+        activeTitle.textContent = BOARDS[i].name +
+          (!online ? ' — offline'
+           : j.state === 'engraving' ? ` — engraving ${Math.round(j.progress)}%`
+           : j.state === 'idle' ? ' — idle' : '');
+        updateMainPane(i);
+      }
+    }
+
+    // Poll board status to light the sidebar dots + show online/offline.
+    async function pollStatus(i) {
+      const base = BOARDS[i].url.replace(/\/+$/, '');
+      if (isRemoteMode()) {
+        // Remote: read the ESP's latest heartbeat from the same-origin relay.
+        try {
+          const r = await fetch('/api/boards');
+          if (!r.ok) throw new Error(r.status);
+          const j = await r.json();
+          const boardIp = base.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+          const hb = (j.boards || []).find((b) => b.ip === boardIp || b.board === boardIp);
+          if (hb && hb.online) applyStatus(i, hb, true);
+          else applyStatus(i, null, false);
+        } catch (_) {
+          applyStatus(i, null, false);
+        }
+        return;
+      }
+      // Local (HTTP dashboard, same LAN): poll the board directly.
+      try {
+        const r = await fetch(base + '/api/status', { mode: 'cors' });
+        if (!r.ok) throw new Error(r.status);
+        const j = await r.json();
+        applyStatus(i, j, true);
+      } catch (_) {
+        applyStatus(i, null, false);
+      }
+    }
+
+    function fmtUptime(sec) {
+      sec = sec || 0;
+      const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+      return h > 0 ? `${h}h ${m}m` : `${m}m ${sec % 60}s`;
+    }
+
+    // Status card shown in the main pane when remote (the ESP's page itself
+    // cannot be iframed from an HTTPS page).
+    function statusCardHtml(board, s) {
+      const pct = Math.round(s.progress || 0);
+      const bar = s.state === 'engraving'
+        ? `<div style="width:260px;height:8px;background:var(--dash-border);border-radius:4px;overflow:hidden;margin-top:10px;">
+             <div style="width:${pct}%;height:100%;background:var(--status-engraving);"></div>
+           </div>` : '';
+      const rows = [
+        ['State', s.state],
+        ['Fan', s.fan ? 'on' : 'off'],
+        ['Uptime', fmtUptime(s.uptimeSec)],
+        ['IP', s.ip || '—'],
+      ];
+      if (s.chip) rows.push(['Chip', s.chip]);
+      return `<span class="offline-title">${board.name} — online (remote status)</span>
+        <span class="offline-detail">Live control needs the home network (or a tunnel — see README).</span>
+        <div style="display:grid;grid-template-columns:auto auto;gap:6px 18px;margin-top:10px;font-size:13px;">
+          ${rows.map((r) => `<span style="color:var(--dash-text-secondary);">${r[0]}</span><span style="font-weight:600;">${r[1]}</span>`).join('')}
+        </div>${bar}`;
+    }
+
+    function updateMainPane(i) {
+      const board = BOARDS[i];
+      const boardIp = board.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      if (isRemoteMode()) {
+        // Remote: show the heartbeat status card (or offline note) — the
+        // iframe of the ESP's page can never load from an HTTPS page.
+        placeholder.style.display = '';
+        if (boardOnline[i] && boardStatus[i]) {
+          placeholder.innerHTML = statusCardHtml(board, boardStatus[i]);
+        } else {
+          placeholder.innerHTML = `<span class="offline-icon">🔌</span>
+            <span class="offline-title">Board offline</span>
+            <span class="offline-detail">${board.name} at ${boardIp} has not sent a recent heartbeat.</span>
+            <span class="offline-detail">Check that the ESP32 is powered on, on a Wi-Fi with internet access, and the Render relay is up.</span>`;
+        }
+        return;
+      }
+      // Local: iframe the board's page when online.
+      const online = boardOnline[i];
+      if (online) {
+        placeholder.style.display = 'none';
+      } else {
+        placeholder.style.display = '';
+        placeholder.innerHTML = `<span class="offline-icon">🔌</span>
+          <span class="offline-title">Board offline</span>
+          <span class="offline-detail">${board.name} at ${boardIp} is not reachable.</span>
+          <span class="offline-detail">Check that the ESP32 is powered on and on the same network.</span>`;
+      }
+    }
+    BOARDS.forEach((_, i) => {
+      pollStatus(i);
+      setInterval(() => pollStatus(i), 5000);
+    });
+
+    // Show the BOARDS config visually in the sidebar footer
+    const configPanel = document.getElementById('boardConfigPanel');
+    configPanel.innerHTML = '<strong style="font-size:11px;">BOARDS config:</strong><br>' +
+      BOARDS.map((b, i) => `<span style="font-size:10px; color:var(--dash-text-secondary);">${i+1}. ${b.name} → ${b.url}</span>`).join('<br>') +
+      '<br><span style="font-size:10px; color:var(--dash-text-secondary);">Edit <code>BOARDS</code> in source to add boards.</span>';
+
+    // Auto-select the first board
+    if (BOARDS.length > 0) selectBoard(0);
+  </script>
+</body>
+</html>

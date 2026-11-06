@@ -1,0 +1,13 @@
+{
+  "name": "limprojects-dashboard",
+  "version": "1.0.0",
+  "description": "Multi-board dashboard + heartbeat relay for the MoonCutter ESP32 laser engraver. Deployed to Render.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "license": "MPL-2.0"
+}
