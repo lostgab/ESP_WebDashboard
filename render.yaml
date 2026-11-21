@@ -12,7 +12,7 @@
 
 services:
   - type: web
-    name: limprojects-dash
+    name: limprojects
     runtime: node
     plan: free
     rootDir: .

@@ -11,7 +11,7 @@
  *   node cnc-bridge.js                          # defaults
  *   node cnc-bridge.js --board cnc.local        # mDNS hostname
  *   node cnc-bridge.js --board 192.168.1.131    # IP
- *   node cnc-bridge.js --relay https://limprojects-dash.onrender.com
+ *   node cnc-bridge.js --relay https://limprojects.onrender.com
  *
  * Requires: npm install ws
  */
@@ -27,7 +27,7 @@ function getArg(name, def) {
   return i !== -1 && args[i + 1] ? args[i + 1] : def;
 }
 const BOARD = getArg('board', 'cnc.local');
-const RELAY = getArg('relay', 'https://limprojects-dash.onrender.com');
+const RELAY = getArg('relay', 'https://limprojects.onrender.com');
 const PUSH_INTERVAL_MS = 3000;   // push to relay every 3 s
 const WS_URL = `ws://${BOARD}/`;
 const RELAY_URL = `${RELAY.replace(/\/+$/, '')}/api/heartbeat`;
