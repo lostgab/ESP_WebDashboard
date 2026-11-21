@@ -112,6 +112,13 @@ The dashboard runs on the existing **`limprojects`** service →
 5. Run the CNC bridge (below) with
    `--relay https://limprojects.onrender.com` and the CNC pane lights up.
 
+> **Service settings (must match `render.yaml`):** Build Command
+> `npm install` (installs the `ws` dependency), Start Command
+> `node server.js`, Health Check Path `/api/boards`. If the service was
+> created from an older config, check Settings → Build / Networking and fix
+> any stale values (e.g. a leftover Root Directory or health path) — a wrong
+> health check path makes every deploy hang and fail.
+
 > **Free-tier caveat:** Render free services sleep after ~15 min idle, so the
 > first request after a pause takes ~30–60 s to wake. Any code change
 > requires a `git push` — Render redeploys on new commits automatically.

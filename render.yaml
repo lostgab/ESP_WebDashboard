@@ -16,6 +16,6 @@ services:
     runtime: node
     plan: free
     rootDir: .
-    buildCommand: ""
+    buildCommand: npm install
     startCommand: node server.js
     healthCheckPath: /api/boards
