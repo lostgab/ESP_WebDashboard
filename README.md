@@ -92,23 +92,25 @@ git push                   # first push only: git push -u origin main
 
 ## Deploy to Render
 
-1. Push this repo to GitHub (steps above).
-2. On [render.com](https://render.com): **New +** → **Blueprint** → pick this
-   repo, branch `main`. Render reads `render.yaml` and creates a free web
-   service (named `limprojects`).
-3. Wait ~1–2 min for the build. The service page shows its URL, e.g.
-   `https://limprojects.onrender.com`.
-4. Point the ESP32's `HEARTBEAT_URL` at
-   `https://<your-service>.onrender.com/api/heartbeat` (in the ESP's
-   `config.h`), reflash, and the dot goes green within ~10 s.
+The dashboard service is **`limprojects-dash`** →
+`https://limprojects-dash.onrender.com`.
 
-> **Existing service:** the live service was originally created as
-> `mooncutter-mock`, so it still runs at
-> `https://mooncutter-mock.onrender.com/`. Renaming the service in
-> `render.yaml` only affects **new** services created from the Blueprint — it
-> does not rename the existing one. To use the `limprojects` URL, either
-> rename the service in the Render dashboard (Settings) or create a new
-> service from the updated Blueprint.
+> **Not to be confused with the MoonCutter board app:** the older
+> `mooncutter-mock` / `limprojects` Render services host the single-board
+> laser web app (from the `LaserEngraverPhoneWeb` repo), **not** this
+> dashboard. This repo deploys its own separate service.
+
+1. Push this repo to GitHub (steps above).
+2. On [render.com](https://render.com): **New +** → **Blueprint** → pick the
+   `lostgab/ESP_WebDashboard` repo, branch `main`. Render reads `render.yaml`
+   and creates the free web service `limprojects-dash`.
+3. Wait ~1–2 min for the build. The service page shows its URL:
+   `https://limprojects-dash.onrender.com`.
+4. Point the laser ESP32's `HEARTBEAT_URL` at
+   `https://limprojects-dash.onrender.com/api/heartbeat` (in the ESP's
+   `config.h`), reflash, and the Laser dot goes green within ~10 s.
+5. Run the CNC bridge (below) with
+   `--relay https://limprojects-dash.onrender.com` and the CNC pane lights up.
 
 > **Free-tier caveat:** Render free services sleep after ~15 min idle, so the
 > first request after a pause takes ~30–60 s to wake. Any code change
@@ -123,7 +125,7 @@ on a PC that is on the home LAN (e.g. your desktop, or a Raspberry Pi):
 
 ```bash
 npm install            # installs ws (only the bridge needs it)
-node cnc-bridge.js --board cnc.local --relay https://mooncutter-mock.onrender.com
+node cnc-bridge.js --board cnc.local --relay https://limprojects-dash.onrender.com
 ```
 
 - `--board` — the FluidNC board address (`cnc.local` mDNS or an IP).
