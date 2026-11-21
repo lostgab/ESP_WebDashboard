@@ -128,25 +128,19 @@ function handleApi(req, res) {
     return;
   }
 
-  // Real ESP32s POST their status here. Body: { board, state, fan,
-  // progress, line, totalLines, psram, chip, uptimeSec, ip }.
+  // Boards POST their status here.
+  //   Laser (ESP32 firmware): { board, state, fan, progress, line,
+  //     totalLines, psram, chip, uptimeSec, ip }
+  //   CNC (cnc-bridge.js):    { board, state, x, y, z, spindle, feed,
+  //     message, uptimeSec, ip }
+  // Unknown fields are passed through untouched, so new boards can add
+  // fields without a relay change.
   if (url === '/api/heartbeat' && method === 'POST') {
     readJsonBody(req, (body) => {
       const name = String(body.board || 'board');
-      heartbeats.set(name, {
-        board: name,
-        state: body.state || 'unknown',
-        fan: !!body.fan,
-        progress: Number(body.progress) || 0,
-        line: Number(body.line) || 0,
-        totalLines: Number(body.totalLines) || 0,
-        psram: !!body.psram,
-        chip: String(body.chip || ''),
-        uptimeSec: Number(body.uptimeSec) || 0,
-        ip: String(body.ip || ''),
-        ts: Date.now(),
-      });
-      console.log(`[dashboard] heartbeat from "${name}": ${body.state} ${body.progress}% ip=${body.ip}`);
+      const hb = { ...body, board: name, ts: Date.now() };
+      heartbeats.set(name, hb);
+      console.log(`[dashboard] heartbeat from "${name}": ${hb.state} ip=${hb.ip || ''}`);
       sendJson(res, 200, { ok: true });
     });
     return;
@@ -160,20 +154,9 @@ function handleApi(req, res) {
     const boards = [];
     for (const hb of heartbeats.values()) {
       const ageMs = now - hb.ts;
-      boards.push({
-        board: hb.board,
-        online: ageMs <= HEARTBEAT_STALE_MS,
-        ageMs,
-        state: hb.state,
-        fan: hb.fan,
-        progress: hb.progress,
-        line: hb.line,
-        totalLines: hb.totalLines,
-        psram: hb.psram,
-        chip: hb.chip,
-        uptimeSec: hb.uptimeSec,
-        ip: hb.ip,
-      });
+      // Pass the whole payload through (laser + CNC fields differ) and
+      // add the freshness flag.
+      boards.push({ ...hb, online: ageMs <= HEARTBEAT_STALE_MS, ageMs });
     }
     boards.sort((a, b) => a.board.localeCompare(b.board));
     sendJson(res, 200, { boards, staleMs: HEARTBEAT_STALE_MS });

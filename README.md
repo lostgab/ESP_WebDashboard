@@ -1,9 +1,10 @@
 # LimProjects Dashboard
 
-The **remote status dashboard** for the MoonCutter laser engraver. It's a
-multi-board shell that shows each ESP32 board's online/offline dot and live
-status (state, progress, fan, uptime, IP) **from anywhere in the world** —
-even though the boards sit behind your home router's NAT.
+The **remote status dashboard** for the LimProjects machines: the MoonCutter
+laser engraver **and** the FluidNC CNC. It's a GridStack tile dashboard with a
+pane per machine, showing live status (state, progress, positions, spindle)
+**from anywhere in the world** — even though the boards sit behind your home
+router's NAT.
 
 This is the page deployed to [Render](https://render.com) (free tier). It is
 a **separate project** from the MoonCutter ESP firmware + board app, which
@@ -11,8 +12,12 @@ live in the [`LaserEngraverPhoneWeb`](https://github.com/lostgab/LaserEngraverPh
 repo.
 
 ```
-ESP32 (behind home NAT) ──HTTPS POST──► Render (this service) ◄──poll── browser (anywhere)
-   pushes status every 10 s              /api/heartbeat          /api/boards (same-origin)
+Laser ESP32 (behind home NAT) ──HTTPS POST──► Render (this service) ◄──poll── browser (anywhere)
+   pushes status every 10 s                /api/heartbeat          /api/boards (same-origin)
+
+CNC ESP32 (behind home NAT) ──WebSocket──► cnc-bridge.js (PC on home LAN)
+   FluidNC status every 200 ms              │
+                                            └──HTTPS POST──► /api/heartbeat (every 3 s)
 ```
 
 ## Why a heartbeat relay?
@@ -38,10 +43,11 @@ browser↔ESP connection. See the ESP repo's README for the planned tunnel
 ## Repository layout
 
 ```
-WebASP/
+WebDashboard/
 ├── server.js        ← zero-dep Node server: serves the dashboard + heartbeat relay
+├── cnc-bridge.js    ← LAN bridge: FluidNC WebSocket → relay (run on a home-LAN PC)
 ├── public/
-│   └── index.html   ← the multi-board dashboard (self-contained HTML/JS/CSS)
+│   └── index.html   ← the GridStack tile dashboard (self-contained HTML/JS/CSS)
 ├── package.json     ← lets Render deploy this as a web service
 └── render.yaml      ← Render Blueprint: one-click deploy (free tier)
 ```
@@ -60,9 +66,33 @@ Then open `http://localhost:8080/`.
 > dashboard UI without the real ESP32. On Render the real ESP32 sends its own
 > heartbeats, so the demo is disabled there.
 
+## Push to GitHub
+
+The repo lives at <https://github.com/lostgab/ESP_WebDashboard>.
+
+**First time only** — link the local folder to GitHub:
+
+```bash
+git remote add origin https://github.com/lostgab/ESP_WebDashboard.git
+```
+
+**Every time you have changes:**
+
+```bash
+git add -A                 # stage all changes (or: git add <file>)
+git commit -m "what changed"
+git push                   # first push only: git push -u origin main
+```
+
+> **Auth:** the first push asks for GitHub credentials. On Windows,
+> Git for Windows stores them in the Windows Credential Manager after the
+> first successful push, so later pushes are silent. If you use a personal
+> access token, use it as the password (GitHub no longer accepts account
+> passwords for git over HTTPS).
+
 ## Deploy to Render
 
-1. Push this repo to GitHub.
+1. Push this repo to GitHub (steps above).
 2. On [render.com](https://render.com): **New +** → **Blueprint** → pick this
    repo, branch `main`. Render reads `render.yaml` and creates a free web
    service (named `limprojects`).
@@ -84,11 +114,34 @@ Then open `http://localhost:8080/`.
 > first request after a pause takes ~30–60 s to wake. Any code change
 > requires a `git push` — Render redeploys on new commits automatically.
 
+## CNC bridge (remote CNC status)
+
+The CNC (FluidNC) has no built-in heartbeat push — its live status only
+comes over a **WebSocket** the browser connects to directly, which only works
+on the home LAN. To show CNC status from anywhere, a small bridge script runs
+on a PC that is on the home LAN (e.g. your desktop, or a Raspberry Pi):
+
+```bash
+npm install            # installs ws (only the bridge needs it)
+node cnc-bridge.js --board cnc.local --relay https://mooncutter-mock.onrender.com
+```
+
+- `--board` — the FluidNC board address (`cnc.local` mDNS or an IP).
+- `--relay` — the Render service URL (default: the live service).
+- The bridge connects to the board's WebSocket, parses the `<?...>` status
+  reports (state, X/Y/Z, feed, spindle — see `CncMachine/PROTOCOL.md` §7),
+  and POSTs them to `POST /api/heartbeat` every 3 s as `board: "cnc"`.
+- It reconnects automatically if the board or network drops.
+
+> **Keep it running:** the bridge is a plain Node process — run it in a
+> terminal, or as a scheduled task / service on the LAN PC. When it stops,
+> the CNC pane goes offline after ~30 s (stale heartbeat).
+
 ## API
 
 | Method | Path             | Purpose                                                        |
 |--------|------------------|----------------------------------------------------------------|
-| POST   | `/api/heartbeat` | ESP32 pushes its status. Body: `{ board, state, fan, progress, line, totalLines, psram, chip, uptimeSec, ip }` |
+| POST   | `/api/heartbeat` | Boards push their status. Laser body: `{ board, state, fan, progress, line, totalLines, psram, chip, uptimeSec, ip }`. CNC body: `{ board, state, x, y, z, feed, spindle, line, message, ip }`. Extra fields pass through untouched. |
 | GET    | `/api/boards`    | Dashboard polls this. Returns every board's latest heartbeat + `online` (fresh < 30 s) |
 
 ## License

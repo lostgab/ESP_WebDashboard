@@ -4,171 +4,181 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LimProjects Dashboard</title>
+  <!-- GridStack v10 (the only external UI lib — per dashboard skill §1) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10/dist/gridstack.min.css">
   <style>
-    /* AgvReplay-style theme (Seagate palette) */
+    /* ===== Design tokens (Seagate Brand v4.0 — skill §2, verbatim) ===== */
     :root {
-      --dash-bg: #F0F5F9;           /* Seagate Sea 50 */
-      --dash-surface: #FFFFFF;
-      --dash-text: #11181F;         /* Seagate Sea 950 */
-      --dash-text-secondary: #576272; /* Seagate Carbon 600 */
-      --dash-border: #CFDDE8;       /* Seagate Sea 200 */
-      --dash-primary: #6EBE49;      /* Seagate Green 400 */
-      --dash-primary-hover: #55A72F;
-      --dash-primary-light: #C8EEB5;
-      --dash-radius: 4px;
+      --primary: #6EBE49;        /* Seagate Green 400 — signature brand color */
+      --primary-hover: #55A72F;  /* Green 500 — hover */
+      --primary-active: #2F743C; /* Green 700 — pressed */
+      --bg: #ffffff;
+      --card-bg: #F0F5F9;        /* Sea 50 */
+      --text: #11181F;           /* Sea 950 */
+      --text-muted: #576272;     /* Carbon 600 */
+      --border: #CFDDE8;         /* Sea 200 */
+      --card-shadow: 0 2px 8px rgba(17,24,31,0.08);
       --status-online: #2F743C;
       --status-offline: #D64545;
-      --status-engraving: #E8A317;
+      --status-busy: #E8A317;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--dash-bg);
-      color: var(--dash-text);
-      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh;
     }
 
-    /* ===== Shell: full-height sidebar + right column ===== */
+    /* ===== Layout skeleton (skill §3) ===== */
     .dash-shell { display: flex; flex-direction: row; height: 100vh; overflow: hidden; }
+    .app-main   { overflow-y: auto; }
+    #pageContainer { padding: 0 0 24px; }
+    .grid-stack-item.tab-pane { transform: none !important; }
 
     /* ===== Sidebar ===== */
     .app-sidebar {
-      background: var(--dash-surface);
-      border-right: 1px solid var(--dash-border);
-      width: 220px;
-      min-width: 220px;
-      height: 100%;
-      overflow-y: auto;
-      flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
-      padding: 16px 12px;
-      gap: 4px;
+      width: 240px; min-width: 240px;
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      padding: 12px; gap: 6px;
     }
     .sidebar-brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      display: flex; align-items: center; gap: 10px;
       padding: 4px 8px 12px;
-      border-bottom: 1px solid var(--dash-border);
+      border-bottom: 1px solid var(--border);
       margin-bottom: 8px;
     }
     .sidebar-brand h1 { font-size: 15px; font-weight: 700; }
-    .sidebar-brand h1 span { color: var(--dash-text-secondary); font-weight: 400; }
-
-    .board-list { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .sidebar-brand h1 span { color: var(--text-muted); font-weight: 400; }
     .app-sidebar-btn {
-      position: relative;
-      display: flex;
-      flex-direction: row;
-      justify-content: flex-start;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
-      width: 100%;
-      background: none;
-      border: none;
-      border-radius: 8px;
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; width: 100%;
+      background: none; border: none; border-radius: 8px;
       border-left: 3px solid transparent;
-      color: var(--dash-text-secondary);
-      font-size: 15px;
-      font-weight: 500;
-      text-align: left;
-      cursor: pointer;
+      color: var(--text-muted); font-size: 14px; font-weight: 500;
+      text-align: left; cursor: pointer;
     }
-    .app-sidebar-btn .scalable-svg { width: 20px; height: 20px; flex-shrink: 0; }
     .app-sidebar-btn .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .app-sidebar-btn .ip { font-size: 11px; color: var(--dash-text-secondary); white-space: nowrap; }
-    .app-sidebar-btn:hover { background: var(--dash-primary-light); color: var(--dash-primary); }
+    .app-sidebar-btn:hover { background: var(--card-bg); color: var(--text); }
     .app-sidebar-btn.active {
-      background: var(--dash-primary-light);
-      color: var(--dash-primary);
-      border-left-color: var(--dash-primary);
-      font-weight: 600;
+      background: var(--card-bg); color: var(--primary-active);
+      border-left-color: var(--primary); font-weight: 600;
     }
     .app-sidebar-btn .dot {
-      position: absolute;
-      top: 9px; right: 10px;
-      width: 9px; height: 9px;
-      border-radius: 50%;
-      background: var(--dash-border);
+      width: 9px; height: 9px; border-radius: 50%;
+      background: var(--border); flex-shrink: 0;
     }
     .app-sidebar-btn .dot.online { background: var(--status-online); }
+    .app-sidebar-btn .dot.busy { background: var(--status-busy); animation: pulse 1s infinite; }
     .app-sidebar-btn .dot.offline { background: var(--status-offline); }
-    .app-sidebar-btn .dot.engraving { background: var(--status-engraving); animation: pulse 1s infinite; }
     @keyframes pulse { 50% { opacity: 0.4; } }
-
     .sidebar-footer {
+      margin-top: auto;
       padding: 10px 8px 0;
-      border-top: 1px solid var(--dash-border);
-      font-size: 11px;
-      color: var(--dash-text-secondary);
+      border-top: 1px solid var(--border);
+      font-size: 11px; color: var(--text-muted);
     }
 
     /* ===== Right column ===== */
-    .dash-right { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: hidden; }
-    .dash-right .header {
-      background: var(--dash-surface);
-      border-bottom: 1px solid var(--dash-border);
-      flex-shrink: 0;
+    .dash-right { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .header {
+      background: var(--primary); color: #000;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; padding: 0.6rem 1.25rem; flex-wrap: wrap; flex-shrink: 0;
     }
-    .header-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      padding: 0.75rem 1.5rem;
-      flex-wrap: wrap;
+    .header h1 { font-size: 1.2rem; font-weight: 700; }
+    .header .zoom-controls { display: flex; align-items: center; gap: 6px; }
+    .header .zoom-controls button {
+      padding: 3px 10px; border: 1px solid rgba(0,0,0,0.35);
+      background: rgba(255,255,255,0.35); border-radius: 6px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
     }
-    .header-brand { display: flex; align-items: center; gap: 0.75rem; }
-    .header h1 { font-size: 1.35rem; font-weight: 700; }
-    .header .board-info { display: flex; align-items: center; gap: 12px; margin-left: auto; }
-    .header .board-info .title { font-size: 14px; font-weight: 600; }
-    .header .board-info .url { font-size: 12px; color: var(--dash-text-secondary); }
-    .header .open-btn {
-      padding: 6px 14px;
-      background: var(--dash-primary);
-      color: #000;
-      border: none;
-      border-radius: var(--dash-radius);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      text-decoration: none;
-    }
-    .header .open-btn:hover { background: var(--dash-primary-hover); }
+    .header .zoom-controls button:hover { background: rgba(255,255,255,0.6); }
+    .header .zoom-controls .zoom-val { font-size: 12px; font-family: monospace; min-width: 42px; text-align: center; }
 
-    .app-main { flex: 1; overflow: hidden; position: relative; background: var(--dash-bg); }
-    .app-main iframe {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      border: none;
-      background: #fff;
+    .app-main { flex: 1; overflow-y: auto; background: var(--bg); }
+
+    /* ===== Panes (skill §4) ===== */
+    .tab-pane {
+      border-radius: 12px;
+      border: 2px solid var(--border);
+      background: var(--card-bg);
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
     }
-    .app-main iframe.hidden { display: none; }
-    .placeholder {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      color: var(--dash-text-secondary);
-      font-size: 14px;
+    .pane-drag-header {
+      height: 32px; line-height: 32px;
+      padding: 0 10px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem; font-weight: 600;
+      cursor: grab; user-select: none;
+      display: flex; align-items: center; justify-content: space-between;
     }
-    .placeholder .offline-icon { font-size: 48px; }
-    .placeholder .offline-title { font-size: 18px; font-weight: 600; color: var(--dash-text); }
-    .placeholder .offline-detail { font-size: 13px; }
+    .pane-actions { display: flex; gap: 4px; }
+    .pane-win-btn {
+      width: 22px; height: 22px;
+      border: 1px solid var(--border); border-radius: 4px;
+      background: var(--card-bg); color: var(--text-muted);
+      font-size: 11px; cursor: pointer; line-height: 1;
+    }
+    .pane-win-btn:hover { background: var(--border); color: var(--text); }
+    .grid-stack-item.tab-pane.pane-maximized {
+      left: 0 !important; top: 0 !important; width: 100% !important;
+    }
+
+    /* ===== Pane content ===== */
+    .pane-body {
+      height: calc(100% - 32px); padding-top: 32px;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .pane-content { flex: 1; overflow-y: auto; padding: 14px; }
+    .kv-grid {
+      display: grid; grid-template-columns: auto 1fr;
+      gap: 6px 18px; font-size: 13px;
+    }
+    .kv-grid .k { color: var(--text-muted); }
+    .kv-grid .v { font-weight: 600; font-family: monospace; }
+    .badge {
+      display: inline-block;
+      border: 1px solid; padding: 0.15rem 0.4rem; border-radius: 4px;
+      font-family: monospace; font-size: 0.78rem;
+    }
+    .badge.online { border-color: var(--status-online); color: var(--status-online); }
+    .badge.busy { border-color: var(--status-busy); color: var(--status-busy); }
+    .badge.offline { border-color: var(--status-offline); color: var(--status-offline); }
+    .progress-track {
+      width: 100%; height: 10px;
+      background: var(--border); border-radius: 5px;
+      overflow: hidden; margin-top: 6px;
+    }
+    .progress-fill { height: 100%; background: var(--status-busy); width: 0%; transition: width 0.5s; }
+    .log-panel {
+      flex: 1 1 auto; min-height: 60px;
+      font-family: monospace; font-size: 0.78rem;
+      overflow-y: auto; white-space: pre-wrap;
+      background: var(--bg);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 8px; margin-top: 10px;
+    }
+    .section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--text-muted);
+      margin: 12px 0 6px;
+    }
+    .section-label:first-child { margin-top: 0; }
+    .offline-note {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; gap: 8px; color: var(--text-muted); font-size: 13px; text-align: center;
+    }
+    .offline-note .icon { font-size: 40px; }
+    .offline-note .title { font-size: 16px; font-weight: 600; color: var(--text); }
   </style>
 </head>
-<body>
+<body class="dashboard">
 
   <div class="dash-shell">
-    <!-- Left sidebar: board tabs -->
+    <!-- Left sidebar: one button per pane (skill §4) -->
     <div class="app-sidebar">
       <div class="sidebar-brand">
         <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
@@ -176,240 +186,332 @@
           <path d="M10 24V14l8-6 8 6v10H10z" fill="#6EBE49"/>
           <circle cx="18" cy="18" r="3" fill="#6EBE49"/>
         </svg>
-        <h1>LimProjects <span>boards</span></h1>
+        <h1>LimProjects <span>dashboard</span></h1>
       </div>
-      <div class="board-list" id="boardList"></div>
-      <div class="sidebar-footer" id="boardConfigPanel"></div>
+      <button class="app-sidebar-btn" data-tab="laser" onclick="switchLeftTab('laser')" title="Laser engraver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span class="name">Laser</span>
+        <span class="dot" id="dotLaser"></span>
+      </button>
+      <button class="app-sidebar-btn" data-tab="cnc" onclick="switchLeftTab('cnc')" title="CNC machine">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
+        <span class="name">CNC</span>
+        <span class="dot" id="dotCnc"></span>
+      </button>
+      <div class="sidebar-footer" id="sidebarFooter"></div>
     </div>
 
-    <!-- Right column: header + board view -->
+    <!-- Right column: green header + tile grid -->
     <div class="dash-right">
       <header class="header">
-        <div class="header-top">
-          <div class="header-brand">
-            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-              <rect width="36" height="36" rx="8" fill="rgba(110,190,73,0.15)"/>
-              <path d="M10 24V14l8-6 8 6v10H10z" fill="#6EBE49"/>
-              <circle cx="18" cy="18" r="3" fill="#6EBE49"/>
-            </svg>
-            <h1>LimProjects Dashboard</h1>
-          </div>
-          <div class="board-info">
-            <span class="title" id="activeTitle">Select a board</span>
-            <span class="url" id="activeUrl"></span>
-            <a class="open-btn" id="openBtn" href="#" target="_blank" style="display:none;">Open in new tab</a>
-          </div>
+        <h1>LimProjects Dashboard</h1>
+        <div class="zoom-controls">
+          <button onclick="zoomStep(-0.05)" title="Zoom out">&minus;</button>
+          <span class="zoom-val" id="zoomVal">100%</span>
+          <button onclick="zoomStep(0.05)" title="Zoom in">+</button>
+          <button onclick="zoomReset()" title="Reset zoom">Reset</button>
         </div>
       </header>
-      <div class="app-main" id="frameWrap">
-        <div class="placeholder" id="placeholder">Select a board on the left</div>
+      <div class="app-main">
+        <div id="pageContainer">
+          <div id="tabPanesContainer" class="grid-stack">
+
+  <!-- ===== PANE: Laser ===== -->
+  <div id="paneLaser" class="tab-pane" style="display:none; position:relative;">
+    <div class="pane-drag-header">🔦 Laser engraver
+      <span class="pane-actions">
+        <button class="pane-win-btn" title="Minimize" onclick="minimizePaneToTab('paneLaser')">–</button>
+        <button class="pane-win-btn" title="Maximize" onclick="togglePaneMaximize('paneLaser')">□</button>
+        <button class="pane-win-btn" title="Close" onclick="closeTabPane('paneLaser')">✕</button>
+      </span>
+    </div>
+    <div class="pane-body">
+      <div class="pane-content" id="laserContent">
+        <div class="offline-note">
+          <span class="icon">🔌</span>
+          <span class="title">Waiting for heartbeat…</span>
+          <span>The ESP32 pushes status to the relay every ~10 s.</span>
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- ===== PANE: CNC ===== -->
+  <div id="paneCnc" class="tab-pane" style="display:none; position:relative;">
+    <div class="pane-drag-header">⚙️ CNC machine
+      <span class="pane-actions">
+        <button class="pane-win-btn" title="Minimize" onclick="minimizePaneToTab('paneCnc')">–</button>
+        <button class="pane-win-btn" title="Maximize" onclick="togglePaneMaximize('paneCnc')">□</button>
+        <button class="pane-win-btn" title="Close" onclick="closeTabPane('paneCnc')">✕</button>
+      </span>
+    </div>
+    <div class="pane-body">
+      <div class="pane-content" id="cncContent">
+        <div class="offline-note">
+          <span class="icon">🔌</span>
+          <span class="title">Waiting for bridge…</span>
+          <span>Run <code>cnc-bridge.js</code> on a PC on the home LAN to relay FluidNC status.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+          </div><!-- /tabPanesContainer -->
+        </div><!-- /pageContainer -->
+      </div><!-- /app-main -->
+    </div><!-- /dash-right -->
+  </div><!-- /dash-shell -->
+
+  <script src="https://cdn.jsdelivr.net/npm/gridstack@10/dist/gridstack-all.js"></script>
   <script>
+    'use strict';
+
     // ============================================================
-    //  BOARD LIST — edit this to add/remove boards.
-    //  name: shown in the sidebar
-    //  url:  the board's web app (http://<board-ip>/)
+    //  GridStack pane system (skill §4 — complete, tested code)
     // ============================================================
-    const BOARDS = [
-      { name: 'Board 1', url: 'http://192.168.1.100' },
-      // { name: 'Board 2', url: 'http://192.168.1.101' },
-      // { name: 'Board 3', url: 'http://192.168.1.102' },
-    ];
-    // ============================================================
+    var gridEl = document.getElementById('tabPanesContainer');
+    var gs = GridStack.init({
+      column: 12,
+      cellHeight: 48,
+      margin: 0,
+      draggable: { handle: '.pane-drag-header' }
+    }, gridEl);
 
-    const boardList = document.getElementById('boardList');
-    const frameWrap = document.getElementById('frameWrap');
-    const placeholder = document.getElementById('placeholder');
-    const activeTitle = document.getElementById('activeTitle');
-    const activeUrl = document.getElementById('activeUrl');
-    const openBtn = document.getElementById('openBtn');
+    var GRID_TILES_PER_ROW = 2;
+    var GRID_TILE_W = 6; // 12 cols / 2
+    var gridManagedPaneIds = ['paneLaser', 'paneCnc']; // order = row order
 
-    let activeIdx = -1;
-    const iframes = [];
-
-    // Laser icon (20px) for each board tab
-    const LASER_ICON = `<svg class="scalable-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
-
-    // Build sidebar buttons + iframes
-    BOARDS.forEach((b, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'app-sidebar-btn';
-      btn.title = b.url;
-      // Show the board's IP (strip protocol) in the sidebar.
-      const boardIp = b.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-      btn.innerHTML = `${LASER_ICON}
-        <span class="name">${b.name}</span>
-        <span class="ip" id="ip${i}">${boardIp}</span>
-        <span class="dot" id="dot${i}"></span>`;
-      btn.onclick = () => selectBoard(i);
-      boardList.appendChild(btn);
-
-      const iframe = document.createElement('iframe');
-      iframe.className = 'hidden';
-      iframe.src = b.url;
-      frameWrap.appendChild(iframe);
-      iframes.push(iframe);
+    // Safety net (skill §3): every pane MUST be a direct child of the grid
+    // container or GridStack's CSS won't size it. Move strays in at init.
+    gridManagedPaneIds.forEach(function (id) {
+      var p = document.getElementById(id);
+      if (p && p.parentElement !== gridEl) gridEl.appendChild(p);
     });
 
-    function selectBoard(i) {
-      // Toggle: clicking the already-active board deselects it (back to "waiting").
-      if (activeIdx === i) {
-        activeIdx = -1;
-        document.querySelectorAll('.app-sidebar-btn').forEach((el) =>
-          el.classList.remove('active'));
-        iframes.forEach((f) => f.classList.add('hidden'));
-        activeTitle.textContent = 'Select a board';
-        activeUrl.textContent = '';
-        openBtn.style.display = 'none';
-        placeholder.style.display = '';
-        placeholder.innerHTML = 'Select a board on the left';
+    function gridTileHeight() {
+      var cellH = gs.getCellHeight();
+      var headerH = (document.querySelector('.header') || {}).offsetHeight || 120;
+      return Math.max(1, Math.floor((window.innerHeight - headerH) / cellH));
+    }
+
+    function gridRetileAll() {
+      if (!gs) return;
+      var h = gridTileHeight(), i = 0;
+      gridManagedPaneIds.forEach(function (id) {
+        var pane = document.getElementById(id);
+        if (!pane || !pane.gridstackNode || pane.style.display === 'none') return;
+        gs.update(pane, {
+          x: (i % GRID_TILES_PER_ROW) * GRID_TILE_W,
+          y: Math.floor(i / GRID_TILES_PER_ROW) * h,
+          w: GRID_TILE_W, h: h
+        });
+        i++;
+      });
+    }
+
+    function gridShowPane(paneId) {
+      var pane = document.getElementById(paneId);
+      if (!pane || !gs) return;
+      pane.style.display = 'block';
+      pane.style.position = 'absolute';
+      ['width','minWidth','maxWidth','height','left','top','flexShrink','margin']
+        .forEach(function (k) { pane.style[k] = ''; });
+      if (!pane.gridstackNode) {
+        gs.makeWidget(pane, { w: GRID_TILE_W, h: gridTileHeight(),
+                              minW: 3, minH: 4, autoPosition: true });
+      }
+      gridRetileAll();
+    }
+
+    function gridHidePane(paneId) {
+      var pane = document.getElementById(paneId);
+      if (pane && pane.gridstackNode) gs.removeWidget(pane, false, true);
+      if (pane) pane.style.display = 'none';
+      gridRetileAll();
+    }
+
+    function togglePaneMaximize(paneId) {
+      var pane = document.getElementById(paneId);
+      if (!pane || !gs) return;
+      if (pane.classList.contains('pane-maximized')) {
+        // RESTORE
+        pane.classList.remove('pane-maximized');
+        pane.style.removeProperty('height');
+        gs.update(pane, { x: (gridManagedPaneIds.indexOf(paneId) % GRID_TILES_PER_ROW) * GRID_TILE_W,
+                          y: Math.floor(gridManagedPaneIds.indexOf(paneId) / GRID_TILES_PER_ROW) * gridTileHeight(),
+                          w: GRID_TILE_W, h: gridTileHeight() });
+        gridRetileAll();
         return;
       }
-      activeIdx = i;
-      document.querySelectorAll('.app-sidebar-btn').forEach((el, j) =>
-        el.classList.toggle('active', j === i));
-      // Remote (HTTPS) mode: the ESP's page can't be iframed — keep all
-      // iframes hidden and show the status card instead.
-      iframes.forEach((f, j) =>
-        f.classList.toggle('hidden', isRemoteMode() ? true : j !== i));
-      activeTitle.textContent = BOARDS[i].name;
-      activeUrl.textContent = BOARDS[i].url;
-      openBtn.href = BOARDS[i].url;
-      openBtn.style.display = '';
-      // Show the board's web page if online, offline message if not.
-      updateMainPane(i);
+      // MAXIMIZE (zoom-aware — JS-computed height, skill §4)
+      var totalRows = gridTileHeight();
+      gs.update(pane, { x: 0, y: 0, w: 12, h: totalRows });
+      pane.classList.add('pane-maximized');
+      var hdr = document.querySelector('.header');
+      var hdrH = hdr ? Math.round(hdr.getBoundingClientRect().height) : 0;
+      pane.style.setProperty('height', (window.innerHeight - hdrH) + 'px', 'important');
     }
 
-    // Track which boards are online + their latest status.
-    const boardOnline = BOARDS.map(() => false);
-    const boardStatus = BOARDS.map(() => null);   // latest /api/status or heartbeat
+    function minimizePaneToTab(paneId) { gridHidePane(paneId); syncSidebar(); }
+    function closeTabPane(paneId) { gridHidePane(paneId); syncSidebar(); }
 
-    // On an HTTPS page (e.g. the Render deployment) the browser CANNOT fetch
-    // or iframe a board's plain-HTTP URL (mixed content), and from another
-    // network it can't reach the board at all. In that mode the dots + pane
-    // are driven by the same-origin heartbeat relay (GET /api/boards): the
-    // ESP pushes its status to the Render service every ~10 s.
-    function isRemoteMode() {
-      return location.protocol === 'https:';
+    // Sidebar <-> pane sync
+    function syncSidebar() {
+      document.querySelectorAll('.app-sidebar-btn').forEach(function (btn) {
+        var pane = document.getElementById('pane' + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1));
+        btn.classList.toggle('active', !!(pane && pane.style.display !== 'none' && pane.gridstackNode));
+      });
+    }
+    function switchLeftTab(tab) {
+      var paneId = 'pane' + tab.charAt(0).toUpperCase() + tab.slice(1);
+      var pane = document.getElementById(paneId);
+      if (pane && pane.style.display !== 'none' && pane.gridstackNode) gridHidePane(paneId);
+      else gridShowPane(paneId);
+      syncSidebar();
     }
 
-    function applyStatus(i, j, online) {
-      boardOnline[i] = online;
-      boardStatus[i] = online ? j : null;
-      const dot = document.getElementById('dot' + i);
-      dot.className = 'dot ' + (!online ? 'offline'
-        : (j.state === 'engraving' ? 'engraving' : 'online'));
-      if (i === activeIdx) {
-        activeTitle.textContent = BOARDS[i].name +
-          (!online ? ' — offline'
-           : j.state === 'engraving' ? ` — engraving ${Math.round(j.progress)}%`
-           : j.state === 'idle' ? ' — idle' : '');
-        updateMainPane(i);
-      }
+    // ============================================================
+    //  UI zoom (skill §6 — CSS zoom on .dash-shell + localStorage)
+    // ============================================================
+    var UI_SCALE_KEY = 'uiScale';
+    var UI_SCALE_DEFAULT = 1.0;
+    function applyUiScale(z) {
+      z = Math.min(1.5, Math.max(0.5, z));
+      document.querySelector('.dash-shell').style.zoom = z;
+      document.getElementById('zoomVal').textContent = Math.round(z * 100) + '%';
+      try { localStorage.setItem(UI_SCALE_KEY, String(z)); } catch (_) {}
+      // recompute tile heights after zoom settles
+      setTimeout(gridRetileAll, 50);
     }
+    function zoomStep(d) {
+      var cur = parseFloat(localStorage.getItem(UI_SCALE_KEY)) || UI_SCALE_DEFAULT;
+      applyUiScale(cur + d);
+    }
+    function zoomReset() { applyUiScale(UI_SCALE_DEFAULT); }
+    applyUiScale(parseFloat(localStorage.getItem(UI_SCALE_KEY)) || UI_SCALE_DEFAULT);
 
-    // Poll board status to light the sidebar dots + show online/offline.
-    async function pollStatus(i) {
-      const base = BOARDS[i].url.replace(/\/+$/, '');
-      if (isRemoteMode()) {
-        // Remote: read the ESP's latest heartbeat from the same-origin relay.
-        try {
-          const r = await fetch('/api/boards');
-          if (!r.ok) throw new Error(r.status);
-          const j = await r.json();
-          const boardIp = base.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-          const hb = (j.boards || []).find((b) => b.ip === boardIp || b.board === boardIp);
-          if (hb && hb.online) applyStatus(i, hb, true);
-          else applyStatus(i, null, false);
-        } catch (_) {
-          applyStatus(i, null, false);
-        }
-        return;
-      }
-      // Local (HTTP dashboard, same LAN): poll the board directly.
-      try {
-        const r = await fetch(base + '/api/status', { mode: 'cors' });
-        if (!r.ok) throw new Error(r.status);
-        const j = await r.json();
-        applyStatus(i, j, true);
-      } catch (_) {
-        applyStatus(i, null, false);
-      }
-    }
+    // Recompute maximized pane height on resize (zoom changes don't fire resize)
+    window.addEventListener('resize', function () {
+      document.querySelectorAll('.tab-pane.pane-maximized').forEach(function (pane) {
+        var hdr = document.querySelector('.header');
+        var hdrH = hdr ? Math.round(hdr.getBoundingClientRect().height) : 0;
+        pane.style.setProperty('height', (window.innerHeight - hdrH) + 'px', 'important');
+      });
+      gridRetileAll();
+    });
+
+    // ============================================================
+    //  Live data (skill §7 — poll /api/boards every 5 s)
+    // ============================================================
+    var lastCncMsg = null;   // for the CNC log line (only show new messages)
 
     function fmtUptime(sec) {
       sec = sec || 0;
-      const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
-      return h > 0 ? `${h}h ${m}m` : `${m}m ${sec % 60}s`;
+      var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+      return h > 0 ? h + 'h ' + m + 'm' : m + 'm ' + (sec % 60) + 's';
+    }
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
     }
 
-    // Status card shown in the main pane when remote (the ESP's page itself
-    // cannot be iframed from an HTTPS page).
-    function statusCardHtml(board, s) {
-      const pct = Math.round(s.progress || 0);
-      const bar = s.state === 'engraving'
-        ? `<div style="width:260px;height:8px;background:var(--dash-border);border-radius:4px;overflow:hidden;margin-top:10px;">
-             <div style="width:${pct}%;height:100%;background:var(--status-engraving);"></div>
-           </div>` : '';
-      const rows = [
-        ['State', s.state],
-        ['Fan', s.fan ? 'on' : 'off'],
-        ['Uptime', fmtUptime(s.uptimeSec)],
-        ['IP', s.ip || '—'],
-      ];
-      if (s.chip) rows.push(['Chip', s.chip]);
-      return `<span class="offline-title">${board.name} — online (remote status)</span>
-        <span class="offline-detail">Live control needs the home network (or a tunnel — see README).</span>
-        <div style="display:grid;grid-template-columns:auto auto;gap:6px 18px;margin-top:10px;font-size:13px;">
-          ${rows.map((r) => `<span style="color:var(--dash-text-secondary);">${r[0]}</span><span style="font-weight:600;">${r[1]}</span>`).join('')}
-        </div>${bar}`;
+    function setDot(id, cls) {
+      var d = document.getElementById(id);
+      if (d) d.className = 'dot ' + cls;
     }
 
-    function updateMainPane(i) {
-      const board = BOARDS[i];
-      const boardIp = board.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-      if (isRemoteMode()) {
-        // Remote: show the heartbeat status card (or offline note) — the
-        // iframe of the ESP's page can never load from an HTTPS page.
-        placeholder.style.display = '';
-        if (boardOnline[i] && boardStatus[i]) {
-          placeholder.innerHTML = statusCardHtml(board, boardStatus[i]);
-        } else {
-          placeholder.innerHTML = `<span class="offline-icon">🔌</span>
-            <span class="offline-title">Board offline</span>
-            <span class="offline-detail">${board.name} at ${boardIp} has not sent a recent heartbeat.</span>
-            <span class="offline-detail">Check that the ESP32 is powered on, on a Wi-Fi with internet access, and the Render relay is up.</span>`;
-        }
+    function renderLaser(hb) {
+      var el = document.getElementById('laserContent');
+      if (!hb || !hb.online) {
+        setDot('dotLaser', 'offline');
+        el.innerHTML = '<div class="offline-note">' +
+          '<span class="icon">🔌</span>' +
+          '<span class="title">Laser offline</span>' +
+          '<span>The ESP32 has not sent a recent heartbeat.</span>' +
+          '<span>Check that the board is powered on and on a Wi-Fi with internet access.</span></div>';
         return;
       }
-      // Local: iframe the board's page when online.
-      const online = boardOnline[i];
-      if (online) {
-        placeholder.style.display = 'none';
-      } else {
-        placeholder.style.display = '';
-        placeholder.innerHTML = `<span class="offline-icon">🔌</span>
-          <span class="offline-title">Board offline</span>
-          <span class="offline-detail">${board.name} at ${boardIp} is not reachable.</span>
-          <span class="offline-detail">Check that the ESP32 is powered on and on the same network.</span>`;
+      var busy = hb.state === 'engraving';
+      setDot('dotLaser', busy ? 'busy' : 'online');
+      var pct = Math.round(hb.progress || 0);
+      var rows = [
+        ['State', '<span class="badge ' + (busy ? 'busy' : 'online') + '">' + esc(hb.state) + '</span>'],
+        ['Fan', hb.fan ? 'on' : 'off'],
+        ['Uptime', fmtUptime(hb.uptimeSec)],
+        ['IP', hb.ip || '—'],
+      ];
+      if (hb.chip) rows.push(['Chip', esc(hb.chip)]);
+      var bar = '';
+      if (busy) {
+        bar = '<div class="section-label">Job progress — ' + pct + '%</div>' +
+          '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
+          (hb.totalLines ? '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;font-family:monospace;">line ' + hb.line + ' / ' + hb.totalLines + '</div>' : '');
+      }
+      el.innerHTML = '<div class="kv-grid">' +
+        rows.map(function (r) { return '<span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span>'; }).join('') +
+        '</div>' + bar;
+    }
+
+    function renderCnc(hb) {
+      var el = document.getElementById('cncContent');
+      if (!hb || !hb.online) {
+        setDot('dotCnc', 'offline');
+        el.innerHTML = '<div class="offline-note">' +
+          '<span class="icon">🔌</span>' +
+          '<span class="title">CNC offline</span>' +
+          '<span>No recent status from the FluidNC bridge.</span>' +
+          '<span>Run <code>node cnc-bridge.js</code> on a PC connected to the home LAN.</span></div>';
+        return;
+      }
+      var busy = hb.state === 'run' || hb.state === 'hold';
+      setDot('dotCnc', busy ? 'busy' : 'online');
+      var rows = [
+        ['State', '<span class="badge ' + (busy ? 'busy' : 'online') + '">' + esc(hb.state) + '</span>'],
+        ['X', (hb.x != null ? hb.x.toFixed(3) : '—') + ' mm'],
+        ['Y', (hb.y != null ? hb.y.toFixed(3) : '—') + ' mm'],
+        ['Z', (hb.z != null ? hb.z.toFixed(3) : '—') + ' mm'],
+      ];
+      if (hb.spindle != null) rows.push(['Spindle', esc(hb.spindle)]);
+      if (hb.feed != null) rows.push(['Feed', esc(hb.feed)]);
+      if (hb.ip) rows.push(['IP', esc(hb.ip)]);
+      var log = '';
+      if (hb.message) {
+        if (hb.message !== lastCncMsg) {
+          lastCncMsg = hb.message;
+          log = '<div class="section-label">Last message</div>' +
+            '<div class="log-panel" style="flex:none;max-height:120px;">' + esc(hb.message) + '</div>';
+        }
+      }
+      el.innerHTML = '<div class="kv-grid">' +
+        rows.map(function (r) { return '<span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span>'; }).join('') +
+        '</div>' + log;
+    }
+
+    async function pollBoards() {
+      try {
+        var r = await fetch('/api/boards');
+        if (!r.ok) throw new Error(r.status);
+        var j = await r.json();
+        var boards = j.boards || [];
+        var laser = boards.find(function (b) { return b.board === 'laser'; });
+        var cnc = boards.find(function (b) { return b.board === 'cnc'; });
+        renderLaser(laser);
+        renderCnc(cnc);
+        // sidebar footer: relay info
+        document.getElementById('sidebarFooter').innerHTML =
+          'Relay: ' + boards.length + ' board(s) known · stale after ' + Math.round((j.staleMs || 30000) / 1000) + ' s';
+      } catch (_) {
+        // relay unreachable — leave panes as-is
       }
     }
-    BOARDS.forEach((_, i) => {
-      pollStatus(i);
-      setInterval(() => pollStatus(i), 5000);
-    });
+    pollBoards();
+    setInterval(pollBoards, 5000);
 
-    // Show the BOARDS config visually in the sidebar footer
-    const configPanel = document.getElementById('boardConfigPanel');
-    configPanel.innerHTML = '<strong style="font-size:11px;">BOARDS config:</strong><br>' +
-      BOARDS.map((b, i) => `<span style="font-size:10px; color:var(--dash-text-secondary);">${i+1}. ${b.name} → ${b.url}</span>`).join('<br>') +
-      '<br><span style="font-size:10px; color:var(--dash-text-secondary);">Edit <code>BOARDS</code> in source to add boards.</span>';
-
-    // Auto-select the first board
-    if (BOARDS.length > 0) selectBoard(0);
+    // Open both panes by default
+    gridShowPane('paneLaser');
+    gridShowPane('paneCnc');
+    syncSidebar();
   </script>
 </body>
 </html>

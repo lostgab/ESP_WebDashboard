@@ -4,10 +4,14 @@
   "description": "Multi-board dashboard + heartbeat relay for the MoonCutter ESP32 laser engraver. Deployed to Render.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "bridge": "node cnc-bridge.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "license": "MPL-2.0"
 }
