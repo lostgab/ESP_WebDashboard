@@ -173,6 +173,44 @@
     }
     .offline-note .icon { font-size: 40px; }
     .offline-note .title { font-size: 16px; font-weight: 600; color: var(--text); }
+
+    /* ===== Mobile (phone) layout =====
+       Sidebar becomes a horizontal icon strip on top; panes stack 1 per row
+       (the JS computes GRID_TILES_PER_ROW from window width). */
+    @media (max-width: 768px) {
+      .dash-shell { flex-direction: column; }
+      .app-sidebar {
+        width: 100%; min-width: 0; flex-shrink: 0;
+        flex-direction: row; align-items: center;
+        padding: 6px 8px; gap: 6px;
+        border-right: none; border-bottom: 1px solid var(--border);
+        overflow-x: auto; overflow-y: hidden;
+      }
+      .sidebar-brand {
+        flex-direction: column; gap: 2px;
+        padding: 0 8px; border-bottom: none; margin-bottom: 0;
+        border-right: 1px solid var(--border);
+      }
+      .sidebar-brand h1 { font-size: 12px; }
+      .app-sidebar-btn {
+        flex-direction: column; gap: 4px;
+        padding: 8px 14px; width: auto; min-width: 64px;
+        flex-shrink: 0; border-left: none; border-bottom: 3px solid transparent;
+        font-size: 11px;
+      }
+      .app-sidebar-btn.active { border-bottom-color: var(--primary); }
+      .app-sidebar-btn .name { white-space: nowrap; }
+      .app-sidebar-btn .ip { display: none; }
+      .app-sidebar-btn .dot { position: static; }
+      .sidebar-footer { display: none; }
+      .header { padding: 0.5rem 0.75rem; }
+      .header h1 { font-size: 1rem; }
+      .header .zoom-controls { display: none; }   /* pinch-zoom covers it */
+      .pane-drag-header { height: 40px; line-height: 40px; font-size: 0.95rem; }
+      .pane-body { height: calc(100% - 40px); padding-top: 40px; }
+      .pane-win-btn { width: 30px; height: 30px; font-size: 14px; }  /* bigger touch targets */
+      .pane-content { padding: 10px; }
+    }
   </style>
 </head>
 <body class="dashboard">
@@ -277,8 +315,9 @@
       draggable: { handle: '.pane-drag-header' }
     }, gridEl);
 
-    var GRID_TILES_PER_ROW = 2;
-    var GRID_TILE_W = 6; // 12 cols / 2
+    // Responsive tiling: 2 per row on desktop, 1 per row on phones (<=768px).
+    function gridTilesPerRow() { return window.innerWidth <= 768 ? 1 : 2; }
+    function gridTileW() { return Math.floor(12 / gridTilesPerRow()); }
     var gridManagedPaneIds = ['paneLaser', 'paneCnc']; // order = row order
 
     // Safety net (skill §3): every pane MUST be a direct child of the grid
@@ -296,14 +335,14 @@
 
     function gridRetileAll() {
       if (!gs) return;
-      var h = gridTileHeight(), i = 0;
+      var perRow = gridTilesPerRow(), w = gridTileW(), h = gridTileHeight(), i = 0;
       gridManagedPaneIds.forEach(function (id) {
         var pane = document.getElementById(id);
         if (!pane || !pane.gridstackNode || pane.style.display === 'none') return;
         gs.update(pane, {
-          x: (i % GRID_TILES_PER_ROW) * GRID_TILE_W,
-          y: Math.floor(i / GRID_TILES_PER_ROW) * h,
-          w: GRID_TILE_W, h: h
+          x: (i % perRow) * w,
+          y: Math.floor(i / perRow) * h,
+          w: w, h: h
         });
         i++;
       });
@@ -317,7 +356,7 @@
       ['width','minWidth','maxWidth','height','left','top','flexShrink','margin']
         .forEach(function (k) { pane.style[k] = ''; });
       if (!pane.gridstackNode) {
-        gs.makeWidget(pane, { w: GRID_TILE_W, h: gridTileHeight(),
+        gs.makeWidget(pane, { w: gridTileW(), h: gridTileHeight(),
                               minW: 3, minH: 4, autoPosition: true });
       }
       gridRetileAll();
@@ -337,9 +376,10 @@
         // RESTORE
         pane.classList.remove('pane-maximized');
         pane.style.removeProperty('height');
-        gs.update(pane, { x: (gridManagedPaneIds.indexOf(paneId) % GRID_TILES_PER_ROW) * GRID_TILE_W,
-                          y: Math.floor(gridManagedPaneIds.indexOf(paneId) / GRID_TILES_PER_ROW) * gridTileHeight(),
-                          w: GRID_TILE_W, h: gridTileHeight() });
+        var idx = gridManagedPaneIds.indexOf(paneId), perRow = gridTilesPerRow();
+        gs.update(pane, { x: (idx % perRow) * gridTileW(),
+                          y: Math.floor(idx / perRow) * gridTileHeight(),
+                          w: gridTileW(), h: gridTileHeight() });
         gridRetileAll();
         return;
       }
