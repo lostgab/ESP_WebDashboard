@@ -505,13 +505,17 @@
         return;
       }
       var busy = hb.state === 'run' || hb.state === 'hold';
-      setDot('dotCnc', busy ? 'busy' : 'online');
+      var alarm = hb.state === 'alarm' || hb.state === 'kill0' || hb.state === 'kill1';
+      setDot('dotCnc', alarm ? 'offline' : busy ? 'busy' : 'online');
       var rows = [
-        ['State', '<span class="badge ' + (busy ? 'busy' : 'online') + '">' + esc(hb.state) + '</span>'],
+        ['State', '<span class="badge ' + (alarm ? 'offline' : busy ? 'busy' : 'online') + '">' + esc(hb.state) + '</span>'],
         ['X', (hb.x != null ? hb.x.toFixed(3) : '—') + ' mm'],
         ['Y', (hb.y != null ? hb.y.toFixed(3) : '—') + ' mm'],
         ['Z', (hb.z != null ? hb.z.toFixed(3) : '—') + ' mm'],
       ];
+      if (hb.wx != null) {
+        rows.push(['Work', hb.wx.toFixed(3) + ', ' + (hb.wy != null ? hb.wy.toFixed(3) : '—') + ', ' + (hb.wz != null ? hb.wz.toFixed(3) : '—') + ' mm']);
+      }
       if (hb.spindle != null) rows.push(['Spindle', esc(hb.spindle)]);
       if (hb.feed != null) rows.push(['Feed', esc(hb.feed)]);
       if (hb.ip) rows.push(['IP', esc(hb.ip)]);
