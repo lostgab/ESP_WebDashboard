@@ -174,6 +174,23 @@
     .offline-note .icon { font-size: 40px; }
     .offline-note .title { font-size: 16px; font-weight: 600; color: var(--text); }
 
+    /* ===== Vader pane (ASCII flipbook) ===== */
+    .vader-pane { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .vader-stage {
+      width: 100%; max-width: 340px; aspect-ratio: 1080 / 1920;
+      background: #000; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    }
+    .vader-stage img { width: 100%; height: 100%; display: block; }
+    .vader-bar { display: flex; align-items: center; gap: 8px; width: 100%; max-width: 340px; }
+    .vader-bar button {
+      background: var(--card-bg); color: var(--text); border: 1px solid var(--border);
+      border-radius: 6px; min-width: 44px; height: 38px; font-size: 15px; cursor: pointer;
+    }
+    .vader-bar button:hover { border-color: var(--primary); }
+    .vader-bar input[type=range] { flex: 1; accent-color: var(--primary); }
+    .vader-time { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 80px; text-align: right; }
+    .vader-hint { font-size: 11px; color: var(--text-muted); }
+
     /* ===== Mobile (phone) layout =====
        Sidebar becomes a horizontal icon strip on top; panes stack 1 per row
        (the JS computes GRID_TILES_PER_ROW from window width). */
@@ -236,6 +253,10 @@
         <span class="name">CNC</span>
         <span class="dot" id="dotCnc"></span>
       </button>
+      <button class="app-sidebar-btn" data-tab="vader" onclick="switchLeftTab('vader')" title="Darth Vader ASCII">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12v7a6 6 0 0 1-12 0V3z"/><path d="M9 8h6M9 11h6"/><path d="M12 16v5"/></svg>
+        <span class="name">Vader</span>
+      </button>
       <div class="sidebar-footer" id="sidebarFooter"></div>
     </div>
 
@@ -294,6 +315,28 @@
     </div>
   </div>
 
+  <!-- ===== PANE: Vader (ASCII flipbook) ===== -->
+  <div id="paneVader" class="tab-pane" style="display:none; position:relative;">
+    <div class="pane-drag-header">🖤 Darth Vader — ASCII
+      <span class="pane-actions">
+        <button class="pane-win-btn" title="Minimize" onclick="minimizePaneToTab('paneVader')">–</button>
+        <button class="pane-win-btn" title="Maximize" onclick="togglePaneMaximize('paneVader')">□</button>
+        <button class="pane-win-btn" title="Close" onclick="closeTabPane('paneVader')">✕</button>
+      </span>
+    </div>
+    <div class="pane-body">
+      <div class="pane-content vader-pane" id="vaderContent">
+        <div class="vader-stage"><img id="vaderFrame" src="vader/000.jpg" alt="Darth Vader ASCII"></div>
+        <div class="vader-bar">
+          <button id="vaderPlay" onclick="vaderTogglePlay()" title="Play / pause">▶</button>
+          <input type="range" id="vaderScrub" min="0" max="59" value="0" step="1" oninput="vaderScrubTo(this.value)">
+          <span class="vader-time" id="vaderTime">0.00 / 2.00 s</span>
+        </div>
+        <div class="vader-hint">Procedural ASCII — rendered from math, not a video. Drag the bar to scrub.</div>
+      </div>
+    </div>
+  </div>
+
           </div><!-- /tabPanesContainer -->
         </div><!-- /pageContainer -->
       </div><!-- /app-main -->
@@ -318,7 +361,7 @@
     // Responsive tiling: 2 per row on desktop, 1 per row on phones (<=768px).
     function gridTilesPerRow() { return window.innerWidth <= 768 ? 1 : 2; }
     function gridTileW() { return Math.floor(12 / gridTilesPerRow()); }
-    var gridManagedPaneIds = ['paneLaser', 'paneCnc']; // order = row order
+    var gridManagedPaneIds = ['paneLaser', 'paneCnc', 'paneVader']; // order = row order
 
     // Safety net (skill §3): every pane MUST be a direct child of the grid
     // container or GridStack's CSS won't size it. Move strays in at init.
@@ -439,6 +482,46 @@
       });
       gridRetileAll();
     });
+
+    // ============================================================
+    //  Vader flipbook player (60 pre-rendered frames @ 30 fps)
+    // ============================================================
+    var VADER_N = 60, VADER_FPS = 30;
+    var vaderIdx = 0, vaderPlaying = false;
+    var vaderFrames = [];
+    (function preloadVader() {
+      for (var i = 0; i < VADER_N; i++) {
+        var im = new Image();
+        im.src = 'vader/' + String(i).padStart(3, '0') + '.jpg';
+        vaderFrames.push(im);
+      }
+    })();
+    function vaderShow(i) {
+      vaderIdx = ((i % VADER_N) + VADER_N) % VADER_N;
+      var el = document.getElementById('vaderFrame');
+      if (el) el.src = vaderFrames[vaderIdx].src;
+      var s = document.getElementById('vaderScrub');
+      if (s) s.value = vaderIdx;
+      var t = document.getElementById('vaderTime');
+      if (t) t.textContent = (vaderIdx / VADER_FPS).toFixed(2) + ' / ' + (VADER_N / VADER_FPS).toFixed(2) + ' s';
+    }
+    var vaderTimer = null;
+    function vaderTogglePlay() {
+      vaderPlaying = !vaderPlaying;
+      document.getElementById('vaderPlay').textContent = vaderPlaying ? '⏸' : '▶';
+      if (vaderPlaying) {
+        vaderTimer = setInterval(function () { vaderShow(vaderIdx + 1); }, 1000 / VADER_FPS);
+      } else if (vaderTimer) {
+        clearInterval(vaderTimer);
+        vaderTimer = null;
+      }
+    }
+    function vaderScrubTo(v) {
+      vaderPlaying = false;
+      if (vaderTimer) { clearInterval(vaderTimer); vaderTimer = null; }
+      document.getElementById('vaderPlay').textContent = '▶';
+      vaderShow(parseInt(v, 10));
+    }
 
     // ============================================================
     //  Live data (skill §7 — poll /api/boards every 5 s)

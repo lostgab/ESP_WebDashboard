@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vader — orbit turntable</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #080d14; color: #f3f4ef;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+    user-select: none; -webkit-user-select: none;
+  }
+  h1 { font-size: 1rem; font-weight: 600; color: #a8b5c5; margin: 12px 0 8px; letter-spacing: .04em; }
+  .stage {
+    width: min(92vw, 420px);
+    aspect-ratio: 1080 / 1920;
+    background: #000; border: 1px solid #2c3b4a; border-radius: 8px; overflow: hidden;
+    cursor: grab; touch-action: none;
+  }
+  .stage.dragging { cursor: grabbing; }
+  .stage img { width: 100%; height: 100%; display: block; pointer-events: none; }
+  .bar {
+    width: min(92vw, 420px); display: flex; align-items: center; gap: 8px; margin: 10px 0 4px;
+  }
+  button {
+    background: #101923; color: #f3f4ef; border: 1px solid #2c3b4a; border-radius: 6px;
+    min-width: 44px; height: 40px; font-size: 16px; cursor: pointer;
+  }
+  button:hover { border-color: #ffad76; }
+  input[type=range] { flex: 1; accent-color: #ffad76; height: 32px; }
+  select {
+    background: #101923; color: #f3f4ef; border: 1px solid #2c3b4a; border-radius: 6px;
+    height: 40px; padding: 0 6px; font-size: 14px;
+  }
+  .time { font-variant-numeric: tabular-nums; color: #a8b5c5; font-size: 13px; min-width: 84px; text-align: right; }
+  .hint { color: #5c6b7a; font-size: 12px; margin: 4px 0 16px; text-align: center; }
+  .loading {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: #080d14; color: #a8b5c5; font-size: 15px; z-index: 10;
+  }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">Loading frames…</div>
+<h1>VADER — ORBIT TURNTABLE</h1>
+<div class="stage" id="stage"><img id="frame" alt="frame"></div>
+<div class="bar">
+  <button id="play" title="Play / pause (space)">▶</button>
+  <input type="range" id="scrub" min="0" max="59" value="0" step="1">
+  <select id="speed" title="Speed">
+    <option value="0.25">0.25×</option>
+    <option value="0.5">0.5×</option>
+    <option value="1" selected>1×</option>
+    <option value="2">2×</option>
+  </select>
+  <div class="time" id="time">0.00 / 2.00 s</div>
+</div>
+<div class="hint">DRAG to orbit the camera · space = play/pause · drag the bar to scrub time</div>
+<script>
+const ANGLES = 16, N = 60, FPS = 30;
+const img = document.getElementById('frame');
+const stage = document.getElementById('stage');
+const scrub = document.getElementById('scrub');
+const playBtn = document.getElementById('play');
+const speedSel = document.getElementById('speed');
+const timeEl = document.getElementById('time');
+const loading = document.getElementById('loading');
+
+let angle = 0, tIdx = 0, playing = false, last = 0, acc = 0;
+let dragging = false, lastX = 0, dragAcc = 0;
+
+function url(a, i) {
+  return 'vader_turntable/a' + String(a).padStart(2, '0') + '_t' + String(i).padStart(3, '0') + '.jpg';
+}
+function show() {
+  angle = ((angle % ANGLES) + ANGLES) % ANGLES;
+  tIdx = ((tIdx % N) + N) % N;
+  img.src = url(angle, tIdx);
+  scrub.value = tIdx;
+  timeEl.textContent = (tIdx / FPS).toFixed(2) + ' / ' + (N / FPS).toFixed(2) + ' s';
+}
+function setPlaying(p) {
+  playing = p;
+  playBtn.textContent = p ? '⏸' : '▶';
+  if (p) { last = performance.now(); acc = 0; requestAnimationFrame(tick); }
+}
+function tick(now) {
+  if (!playing) return;
+  acc += (now - last) * parseFloat(speedSel.value);
+  last = now;
+  const step = 1000 / FPS;
+  while (acc >= step) { acc -= step; tIdx++; show(); }
+  requestAnimationFrame(tick);
+}
+playBtn.onclick = () => setPlaying(!playing);
+scrub.oninput = () => { setPlaying(false); tIdx = parseInt(scrub.value, 10); show(); };
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') { e.preventDefault(); setPlaying(!playing); }
+  if (e.key === 'ArrowRight') { setPlaying(false); tIdx++; show(); }
+  if (e.key === 'ArrowLeft') { setPlaying(false); tIdx--; show(); }
+});
+
+// drag to orbit: horizontal movement spins the camera around the scene
+function down(x) { dragging = true; lastX = x; dragAcc = 0; stage.classList.add('dragging'); }
+function move(x) {
+  if (!dragging) return;
+  dragAcc += (x - lastX); lastX = x;
+  // ~1/3 of the stage width = one full turn
+  const turns = dragAcc / (stage.clientWidth * 0.33);
+  if (Math.abs(turns) >= 1 / ANGLES) {
+    angle += Math.round(turns * ANGLES);
+    dragAcc -= Math.round(turns * ANGLES) / ANGLES * stage.clientWidth * 0.33;
+    show();
+  }
+}
+function up() { dragging = false; stage.classList.remove('dragging'); }
+stage.addEventListener('pointerdown', (e) => { stage.setPointerCapture(e.pointerId); down(e.clientX); });
+stage.addEventListener('pointermove', (e) => move(e.clientX));
+stage.addEventListener('pointerup', up);
+stage.addEventListener('pointercancel', up);
+
+// preload all frames in the background so orbiting is instant
+let pre = 0, total = ANGLES * N;
+(function preload() {
+  const im = new Image();
+  im.onload = im.onerror = () => {
+    pre++;
+    if (pre >= total) { loading.style.display = 'none'; show(); }
+    else preload();
+  };
+  im.src = url(Math.floor(pre / N), pre % N);
+})();
+</script>
+</body>
+</html>
