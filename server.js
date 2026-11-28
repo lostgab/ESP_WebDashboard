@@ -29,7 +29,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const PORT = parseInt(process.argv[2] || '8777', 10);   // local default; Render sets its own
+// Port priority: CLI arg (node server.js 9000) > $PORT (Render sets this) > 8777 (local default)
+const PORT = parseInt(process.argv[2] || process.env.PORT || '8777', 10);
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // ---- heartbeat relay (remote status) ----
