@@ -191,6 +191,14 @@
     .vader-time { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 80px; text-align: right; }
     .vader-hint { font-size: 11px; color: var(--text-muted); }
 
+    /* WebUI shortcut links (LAN-only — work when you're on the home network) */
+    .webui-link {
+      display: inline-block; margin-top: 10px; padding: 8px 14px;
+      background: var(--card-bg); color: var(--primary); border: 1px solid var(--border);
+      border-radius: 6px; font-size: 13px; font-weight: 600; text-decoration: none;
+    }
+    .webui-link:hover { border-color: var(--primary); }
+
     /* ===== Mobile (phone) layout =====
        Sidebar becomes a horizontal icon strip on top; panes stack 1 per row
        (the JS computes GRID_TILES_PER_ROW from window width). */
@@ -253,10 +261,17 @@
         <span class="name">CNC</span>
         <span class="dot" id="dotCnc"></span>
       </button>
+      <button class="app-sidebar-btn" data-tab="printer" onclick="switchLeftTab('printer')" title="3D printer">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V8l8-5 8 5v13"/><path d="M4 12h16"/><path d="M9 21v-6h6v6"/></svg>
+        <span class="name">3D Printer</span>
+        <span class="dot" id="dotPrinter"></span>
+      </button>
+      <!-- Vader tab hidden for now (pane + player kept below, re-add this button to bring it back):
       <button class="app-sidebar-btn" data-tab="vader" onclick="switchLeftTab('vader')" title="Darth Vader ASCII">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12v7a6 6 0 0 1-12 0V3z"/><path d="M9 8h6M9 11h6"/><path d="M12 16v5"/></svg>
         <span class="name">Vader</span>
       </button>
+      -->
       <div class="sidebar-footer" id="sidebarFooter"></div>
     </div>
 
@@ -309,7 +324,29 @@
         <div class="offline-note">
           <span class="icon">🔌</span>
           <span class="title">Waiting for bridge…</span>
-          <span>Run <code>cnc-bridge.js</code> on a PC on the home LAN to relay FluidNC status.</span>
+          <span>Run <code>node cnc-bridge.js</code> on a PC on the home LAN to relay FluidNC status.</span>
+          <a class="webui-link" href="http://192.168.1.131/" target="_blank" rel="noopener">Open FluidNC WebUI (192.168.1.131) ↗</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PANE: 3D Printer ===== -->
+  <div id="panePrinter" class="tab-pane" style="display:none; position:relative;">
+    <div class="pane-drag-header">🖨️ 3D printer
+      <span class="pane-actions">
+        <button class="pane-win-btn" title="Minimize" onclick="minimizePaneToTab('panePrinter')">–</button>
+        <button class="pane-win-btn" title="Maximize" onclick="togglePaneMaximize('panePrinter')">□</button>
+        <button class="pane-win-btn" title="Close" onclick="closeTabPane('panePrinter')">✕</button>
+      </span>
+    </div>
+    <div class="pane-body">
+      <div class="pane-content" id="printerContent">
+        <div class="offline-note">
+          <span class="icon">🖨️</span>
+          <span class="title">3D printer</span>
+          <span>Live status coming soon — tell me which software it runs (Mainsail / OctoPrint / Marlin) and I'll wire it up.</span>
+          <a class="webui-link" href="http://192.168.1.139/" target="_blank" rel="noopener">Open printer WebUI (192.168.1.139) ↗</a>
         </div>
       </div>
     </div>
@@ -361,7 +398,7 @@
     // Responsive tiling: 2 per row on desktop, 1 per row on phones (<=768px).
     function gridTilesPerRow() { return window.innerWidth <= 768 ? 1 : 2; }
     function gridTileW() { return Math.floor(12 / gridTilesPerRow()); }
-    var gridManagedPaneIds = ['paneLaser', 'paneCnc', 'paneVader']; // order = row order
+    var gridManagedPaneIds = ['paneLaser', 'paneCnc', 'panePrinter']; // order = row order (Vader hidden for now)
 
     // Safety net (skill §3): every pane MUST be a direct child of the grid
     // container or GridStack's CSS won't size it. Move strays in at init.
@@ -584,7 +621,8 @@
           '<span class="icon">🔌</span>' +
           '<span class="title">CNC offline</span>' +
           '<span>No recent status from the FluidNC bridge.</span>' +
-          '<span>Run <code>node cnc-bridge.js</code> on a PC connected to the home LAN.</span></div>';
+          '<span>Run <code>node cnc-bridge.js</code> on a PC connected to the home LAN.</span>' +
+          '<a class="webui-link" href="http://192.168.1.131/" target="_blank" rel="noopener">Open FluidNC WebUI (192.168.1.131) ↗</a></div>';
         return;
       }
       var busy = hb.state === 'run' || hb.state === 'hold';
@@ -612,7 +650,28 @@
       }
       el.innerHTML = '<div class="kv-grid">' +
         rows.map(function (r) { return '<span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span>'; }).join('') +
-        '</div>' + log;
+        '</div>' + log +
+        '<a class="webui-link" href="http://192.168.1.131/" target="_blank" rel="noopener">Open FluidNC WebUI (192.168.1.131) ↗</a>';
+    }
+
+    function renderPrinter(hb) {
+      var el = document.getElementById('printerContent');
+      if (!hb || !hb.online) {
+        setDot('dotPrinter', 'offline');
+        el.innerHTML = '<div class="offline-note">' +
+          '<span class="icon">🖨️</span>' +
+          '<span class="title">3D printer</span>' +
+          '<span>Live status coming soon — tell me which software it runs (Mainsail / OctoPrint / Marlin) and I\'ll wire it up.</span>' +
+          '<a class="webui-link" href="http://192.168.1.139/" target="_blank" rel="noopener">Open printer WebUI (192.168.1.139) ↗</a></div>';
+        return;
+      }
+      setDot('dotPrinter', 'online');
+      var rows = [['State', '<span class="badge online">' + esc(hb.state) + '</span>']];
+      if (hb.ip) rows.push(['IP', esc(hb.ip)]);
+      el.innerHTML = '<div class="kv-grid">' +
+        rows.map(function (r) { return '<span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span>'; }).join('') +
+        '</div>' +
+        '<a class="webui-link" href="http://192.168.1.139/" target="_blank" rel="noopener">Open printer WebUI (192.168.1.139) ↗</a>';
     }
 
     async function pollBoards() {
@@ -623,8 +682,10 @@
         var boards = j.boards || [];
         var laser = boards.find(function (b) { return b.board === 'laser'; });
         var cnc = boards.find(function (b) { return b.board === 'cnc'; });
+        var printer = boards.find(function (b) { return b.board === 'printer'; });
         renderLaser(laser);
         renderCnc(cnc);
+        renderPrinter(printer);
         // sidebar footer: relay info
         document.getElementById('sidebarFooter').innerHTML =
           'Relay: ' + boards.length + ' board(s) known · stale after ' + Math.round((j.staleMs || 30000) / 1000) + ' s';
@@ -635,9 +696,10 @@
     pollBoards();
     setInterval(pollBoards, 5000);
 
-    // Open both panes by default
+    // Open all panes by default (Vader hidden for now)
     gridShowPane('paneLaser');
     gridShowPane('paneCnc');
+    gridShowPane('panePrinter');
     syncSidebar();
   </script>
 </body>

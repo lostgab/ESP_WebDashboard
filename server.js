@@ -16,7 +16,7 @@
  * MoonCutter ESP repo and is served by the ESP32 itself (or its local mock).
  *
  * Run:
- *   node server.js            # port 8080
+ *   node server.js            # port 8777 (local default)
  *   node server.js 9000       # custom port
  *
  * Then open http://localhost:8080/  (the dashboard).
@@ -29,7 +29,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const PORT = parseInt(process.argv[2] || '8080', 10);
+const PORT = parseInt(process.argv[2] || '8777', 10);   // local default; Render sets its own
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // ---- heartbeat relay (remote status) ----

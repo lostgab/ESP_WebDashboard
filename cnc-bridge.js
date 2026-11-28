@@ -26,7 +26,7 @@ function getArg(name, def) {
   const i = args.indexOf('--' + name);
   return i !== -1 && args[i + 1] ? args[i + 1] : def;
 }
-const BOARD = getArg('board', 'cnc.local');
+const BOARD = getArg('board', '192.168.1.131');
 const RELAY = getArg('relay', 'https://limprojects.onrender.com');
 const PUSH_INTERVAL_MS = 3000;   // push to relay every 3 s
 const WS_URL = `ws://${BOARD}/`;
