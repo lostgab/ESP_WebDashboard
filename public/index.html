@@ -199,43 +199,49 @@
     }
     .webui-link:hover { border-color: var(--primary); }
 
-    /* ===== Mobile (phone) layout =====
-       Sidebar becomes a horizontal icon strip on top; panes stack 1 per row
-       (the JS computes GRID_TILES_PER_ROW from window width). */
-    @media (max-width: 768px) {
-      .dash-shell { flex-direction: column; }
-      .app-sidebar {
-        width: 100%; min-width: 0; flex-shrink: 0;
-        flex-direction: row; align-items: center;
-        padding: 6px 8px; gap: 6px;
-        border-right: none; border-bottom: 1px solid var(--border);
-        overflow-x: auto; overflow-y: hidden;
-      }
-      .sidebar-brand {
-        flex-direction: column; gap: 2px;
-        padding: 0 8px; border-bottom: none; margin-bottom: 0;
-        border-right: 1px solid var(--border);
-      }
-      .sidebar-brand h1 { font-size: 12px; }
-      .app-sidebar-btn {
-        flex-direction: column; gap: 4px;
-        padding: 8px 14px; width: auto; min-width: 64px;
-        flex-shrink: 0; border-left: none; border-bottom: 3px solid transparent;
-        font-size: 11px;
-      }
-      .app-sidebar-btn.active { border-bottom-color: var(--primary); }
-      .app-sidebar-btn .name { white-space: nowrap; }
-      .app-sidebar-btn .ip { display: none; }
-      .app-sidebar-btn .dot { position: static; }
-      .sidebar-footer { display: none; }
-      .header { padding: 0.5rem 0.75rem; }
-      .header h1 { font-size: 1rem; }
-      .header .zoom-controls { display: none; }   /* pinch-zoom covers it */
-      .pane-drag-header { height: 40px; line-height: 40px; font-size: 0.95rem; }
-      .pane-body { height: calc(100% - 40px); padding-top: 40px; }
-      .pane-win-btn { width: 30px; height: 30px; font-size: 14px; }  /* bigger touch targets */
-      .pane-content { padding: 10px; }
+    /* Layout toggle button (phone <-> computer) — stays visible in both layouts */
+    .header .layout-toggle {
+      margin-left: 10px; padding: 4px 10px; border: 1px solid var(--border);
+      border-radius: 6px; background: rgba(255,255,255,0.35); cursor: pointer; font-size: 14px;
     }
+    .header .layout-toggle:hover { background: rgba(255,255,255,0.6); }
+
+    /* ===== Mobile (phone) layout =====
+       Applied via body.mobile-layout — JS decides (auto by screen width,
+       or forced by the header toggle button). Sidebar becomes a horizontal
+       icon strip on top; panes stack 1 per row. */
+    body.mobile-layout .dash-shell { flex-direction: column; }
+    body.mobile-layout .app-sidebar {
+      width: 100%; min-width: 0; flex-shrink: 0;
+      flex-direction: row; align-items: center;
+      padding: 6px 8px; gap: 6px;
+      border-right: none; border-bottom: 1px solid var(--border);
+      overflow-x: auto; overflow-y: hidden;
+    }
+    body.mobile-layout .sidebar-brand {
+      flex-direction: column; gap: 2px;
+      padding: 0 8px; border-bottom: none; margin-bottom: 0;
+      border-right: 1px solid var(--border);
+    }
+    body.mobile-layout .sidebar-brand h1 { font-size: 12px; }
+    body.mobile-layout .app-sidebar-btn {
+      flex-direction: column; gap: 4px;
+      padding: 8px 14px; width: auto; min-width: 64px;
+      flex-shrink: 0; border-left: none; border-bottom: 3px solid transparent;
+      font-size: 11px;
+    }
+    body.mobile-layout .app-sidebar-btn.active { border-bottom-color: var(--primary); }
+    body.mobile-layout .app-sidebar-btn .name { white-space: nowrap; }
+    body.mobile-layout .app-sidebar-btn .ip { display: none; }
+    body.mobile-layout .app-sidebar-btn .dot { position: static; }
+    body.mobile-layout .sidebar-footer { display: none; }
+    body.mobile-layout .header { padding: 0.5rem 0.75rem; }
+    body.mobile-layout .header h1 { font-size: 1rem; }
+    body.mobile-layout .header .zoom-controls { display: none; }   /* pinch-zoom covers it */
+    body.mobile-layout .pane-drag-header { height: 40px; line-height: 40px; font-size: 0.95rem; }
+    body.mobile-layout .pane-body { height: calc(100% - 40px); padding-top: 40px; }
+    body.mobile-layout .pane-win-btn { width: 30px; height: 30px; font-size: 14px; }  /* bigger touch targets */
+    body.mobile-layout .pane-content { padding: 10px; }
   </style>
 </head>
 <body class="dashboard">
@@ -285,6 +291,7 @@
           <button onclick="zoomStep(0.05)" title="Zoom in">+</button>
           <button onclick="zoomReset()" title="Reset zoom">Reset</button>
         </div>
+        <button class="layout-toggle" id="layoutBtn" onclick="toggleLayout()" title="Switch phone / computer layout">📱</button>
       </header>
       <div class="app-main">
         <div id="pageContainer">
@@ -395,8 +402,30 @@
       draggable: { handle: '.pane-drag-header' }
     }, gridEl);
 
-    // Responsive tiling: 2 per row on desktop, 1 per row on phones (<=768px).
-    function gridTilesPerRow() { return window.innerWidth <= 768 ? 1 : 2; }
+    // ============================================================
+    //  Layout mode: auto (by screen width) / phone / computer
+    //  The header button forces one or the other; 'auto' is the default.
+    // ============================================================
+    var LAYOUT_KEY = 'layoutMode';
+    function isMobileLayout() {
+      var m = localStorage.getItem(LAYOUT_KEY) || 'auto';
+      if (m === 'phone') return true;
+      if (m === 'computer') return false;
+      return window.innerWidth <= 768;
+    }
+    function applyLayout() {
+      document.body.classList.toggle('mobile-layout', isMobileLayout());
+      var btn = document.getElementById('layoutBtn');
+      if (btn) btn.textContent = isMobileLayout() ? '🖥️' : '📱';
+      gridRetileAll();
+    }
+    function toggleLayout() {
+      localStorage.setItem(LAYOUT_KEY, isMobileLayout() ? 'computer' : 'phone');
+      applyLayout();
+    }
+
+    // Responsive tiling: 2 per row on computer layout, 1 per row on phone layout.
+    function gridTilesPerRow() { return isMobileLayout() ? 1 : 2; }
     function gridTileW() { return Math.floor(12 / gridTilesPerRow()); }
     var gridManagedPaneIds = ['paneLaser', 'paneCnc', 'panePrinter']; // order = row order (Vader hidden for now)
 
@@ -512,6 +541,7 @@
 
     // Recompute maximized pane height on resize (zoom changes don't fire resize)
     window.addEventListener('resize', function () {
+      applyLayout();   // auto mode: re-check screen width
       document.querySelectorAll('.tab-pane.pane-maximized').forEach(function (pane) {
         var hdr = document.querySelector('.header');
         var hdrH = hdr ? Math.round(hdr.getBoundingClientRect().height) : 0;
@@ -660,13 +690,18 @@
         setDot('dotPrinter', 'offline');
         el.innerHTML = '<div class="offline-note">' +
           '<span class="icon">🖨️</span>' +
-          '<span class="title">3D printer</span>' +
-          '<span>Live status coming soon — tell me which software it runs (Mainsail / OctoPrint / Marlin) and I\'ll wire it up.</span>' +
+          '<span class="title">3D printer offline</span>' +
+          '<span>No recent status from the printer bridge.</span>' +
+          '<span>Run <code>node printer-bridge.js</code> on a PC connected to the home LAN.</span>' +
           '<a class="webui-link" href="http://192.168.1.139/" target="_blank" rel="noopener">Open printer WebUI (192.168.1.139) ↗</a></div>';
         return;
       }
-      setDot('dotPrinter', 'online');
-      var rows = [['State', '<span class="badge online">' + esc(hb.state) + '</span>']];
+      var bad = hb.state === 'error';
+      setDot('dotPrinter', bad ? 'offline' : 'online');
+      var rows = [['State', '<span class="badge ' + (bad ? 'offline' : 'online') + '">' + esc(hb.state) + '</span>']];
+      if (hb.temp != null) rows.push(['Nozzle', hb.temp + ' °C']);
+      if (hb.bedTemp != null) rows.push(['Bed', hb.bedTemp + ' °C']);
+      if (hb.progress != null) rows.push(['Job', hb.progress + ' %']);
       if (hb.ip) rows.push(['IP', esc(hb.ip)]);
       el.innerHTML = '<div class="kv-grid">' +
         rows.map(function (r) { return '<span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span>'; }).join('') +
@@ -701,6 +736,7 @@
     gridShowPane('paneCnc');
     gridShowPane('panePrinter');
     syncSidebar();
+    applyLayout();
   </script>
 </body>
 </html>

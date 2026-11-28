@@ -53,12 +53,33 @@ const STATE_NAMES = {
   8: 'hold-pos', 9: 'kill0', 10: 'kill1',
 };
 
-// ---- parse <?...> status report ----
-// Format: <?:<state>,<line>,<buf>,<modal>,<posX>,<posY>,<posZ>,<wposX>,<wposY>,<wposZ>,<feed>,<spindle>
+// ---- parse status reports (both formats) ----
+// New (FluidNC v4.1+): <Idle|MPos:0.000,0.000,0.000|FS:0,0|WCO:38.000,50.000,30.000>
+// Old: <?:<state>,<line>,<buf>,<modal>,<posX>,<posY>,<posZ>,<wposX>,<wposY>,<wposZ>,<feed>,<spindle>
+const STATE_MAP = {
+  Idle: 'idle', Run: 'run', Hold: 'hold', SafePos: 'safe-pos',
+  Check: 'check', Alarm: 'alarm', Door: 'door', CycleHold: 'cycle-hold',
+  HoldPos: 'hold-pos', Kill0: 'kill0', Kill1: 'kill1',
+};
+
 function parseStatus(raw) {
-  const m = raw.match(/^<\?:(.*)/);
-  if (!m) return null;
-  const f = m[1].split(',').map(Number);
+  // New format: <State|MPos:x,y,z|FS:feed,spindle|WCO:wx,wy,wz>
+  const m = raw.match(/^<([A-Za-z0-9]+)\|(.*)>/);
+  if (m) {
+    const state = STATE_MAP[m[1]] || m[1].toLowerCase();
+    const out = { state };
+    const mp = m[2].match(/MPos:([-\d.]+),([-\d.]+),([-\d.]+)/);
+    if (mp) { out.x = +mp[1]; out.y = +mp[2]; out.z = +mp[3]; }
+    const fs = m[2].match(/FS:([-\d.]+),([-\d.]+)/);
+    if (fs) { out.feed = +fs[1]; out.spindle = +fs[2]; }
+    const wc = m[2].match(/WCO:([-\d.]+),([-\d.]+),([-\d.]+)/);
+    if (wc) { out.wx = +wc[1]; out.wy = +wc[2]; out.wz = +wc[3]; }
+    return out;
+  }
+  // Old format: <?:...>
+  const o = raw.match(/^<\?:(.*)/);
+  if (!o) return null;
+  const f = o[1].split(',').map(Number);
   if (f.length < 12) return null;
   return {
     state: STATE_NAMES[f[0]] || `state-${f[0]}`,
@@ -120,8 +141,8 @@ function connect() {
     const text = data.toString().trim();
     if (!text) return;
 
-    // Status report
-    if (text.startsWith('<?:')) {
+    // Status report (new <State|...> or old <?:...)
+    if (text.startsWith('<')) {
       const s = parseStatus(text);
       if (s) {
         lastStatus = s;
